@@ -95,10 +95,8 @@ serve(async (req) => {
       },
       callbacks: {
         finish: `${req.headers.get('origin') || 'https://affgowebapp.vercel.app'}/topup?status=success`,
+        notification: "https://viralgen-midtrans-router.mursalinasrul.workers.dev/",
       },
-      // Webhook notification URL - works even without dashboard configuration
-      // This ensures Midtrans sends payment notifications to our Cloudflare router
-      "callbacks.notification_url": "https://viralgen-midtrans-router.mursalinasrul.workers.dev/",
     };
 
     console.log('Calling Midtrans API with payload:', midtransPayload);
