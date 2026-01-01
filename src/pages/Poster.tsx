@@ -1,17 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Image, Loader2, Sparkles, Download, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Image, Loader2, Sparkles, Download, Check, ChevronDown, ChevronUp, Upload, X, Palette } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
 const COST = 1500;
+const MAX_IMAGES = 14;
 
 // Poster Types - Organized by Category
 const POSTER_CATEGORIES = [
@@ -93,7 +95,6 @@ const POSTER_CATEGORIES = [
   },
 ];
 
-// Flatten for easier lookup
 const ALL_POSTER_TYPES = POSTER_CATEGORIES.flatMap(cat => cat.types);
 
 const COLOR_THEMES = [
@@ -106,6 +107,7 @@ const COLOR_THEMES = [
   { id: 'pastel', label: 'Pastel', prompt: 'soft pastel colors gentle', color: 'bg-gradient-to-r from-pink-200 to-purple-200' },
   { id: 'neon', label: 'Neon', prompt: 'neon glow dark background cyberpunk', color: 'bg-gradient-to-r from-purple-600 to-pink-500' },
   { id: 'monochrome', label: 'Monochrome', prompt: 'black and white monochrome minimal', color: 'bg-gradient-to-r from-gray-700 to-gray-900' },
+  { id: 'custom', label: 'Custom', prompt: '', color: '' },
 ];
 
 const DESIGN_STYLES = [
@@ -119,6 +121,7 @@ const DESIGN_STYLES = [
   { id: 'playful', label: 'Playful/Fun', prompt: 'playful fun cheerful energetic' },
   { id: 'geometric', label: 'Geometric', prompt: 'geometric shapes abstract patterns' },
   { id: 'gradient', label: 'Gradient', prompt: 'smooth gradient flowing colors' },
+  { id: 'custom', label: 'Custom', prompt: '' },
 ];
 
 const ASPECT_RATIOS = [
@@ -129,9 +132,16 @@ const ASPECT_RATIOS = [
   { id: 'landscape_4_3', label: '4:3', description: 'Landscape', value: 'landscape_4_3' },
 ];
 
+interface UploadedImage {
+  id: string;
+  file: File;
+  preview: string;
+}
+
 const Poster = () => {
   const navigate = useNavigate();
   const { user, credits, loading, refreshCredits } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
   const [posterType, setPosterType] = useState('');
@@ -141,8 +151,12 @@ const Poster = () => {
   const [location, setLocation] = useState('');
   const [contact, setContact] = useState('');
   const [colorTheme, setColorTheme] = useState(COLOR_THEMES[0]);
+  const [customColor1, setCustomColor1] = useState('#FF6B6B');
+  const [customColor2, setCustomColor2] = useState('#4ECDC4');
   const [designStyle, setDesignStyle] = useState(DESIGN_STYLES[0]);
+  const [customStyleText, setCustomStyleText] = useState('');
   const [aspectRatio, setAspectRatio] = useState(ASPECT_RATIOS[0]);
+  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
 
   // UI state
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -154,6 +168,71 @@ const Poster = () => {
       navigate('/auth');
     }
   }, [user, loading, navigate]);
+
+  // Cleanup image previews on unmount
+  useEffect(() => {
+    return () => {
+      uploadedImages.forEach(img => URL.revokeObjectURL(img.preview));
+    };
+  }, []);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const remainingSlots = MAX_IMAGES - uploadedImages.length;
+    if (remainingSlots <= 0) {
+      toast.error(`Maksimal ${MAX_IMAGES} foto referensi`);
+      return;
+    }
+
+    const newImages: UploadedImage[] = [];
+    const filesToProcess = Math.min(files.length, remainingSlots);
+
+    for (let i = 0; i < filesToProcess; i++) {
+      const file = files[i];
+      if (file.type.startsWith('image/')) {
+        newImages.push({
+          id: `${Date.now()}-${i}`,
+          file,
+          preview: URL.createObjectURL(file),
+        });
+      }
+    }
+
+    setUploadedImages(prev => [...prev, ...newImages]);
+
+    if (files.length > remainingSlots) {
+      toast.info(`Hanya ${filesToProcess} foto yang ditambahkan (max ${MAX_IMAGES})`);
+    }
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeImage = (id: string) => {
+    setUploadedImages(prev => {
+      const img = prev.find(i => i.id === id);
+      if (img) URL.revokeObjectURL(img.preview);
+      return prev.filter(i => i.id !== id);
+    });
+  };
+
+  const getColorPrompt = () => {
+    if (colorTheme.id === 'custom') {
+      return `custom color palette with primary color ${customColor1} and secondary color ${customColor2}`;
+    }
+    return colorTheme.prompt;
+  };
+
+  const getStylePrompt = () => {
+    if (designStyle.id === 'custom') {
+      return customStyleText || 'creative artistic design';
+    }
+    return designStyle.prompt;
+  };
 
   const composePrompt = () => {
     const selectedType = ALL_POSTER_TYPES.find(t => t.id === posterType);
@@ -180,8 +259,13 @@ const Poster = () => {
       prompt += `. Contact info: ${contact}`;
     }
 
-    prompt += `. Color theme: ${colorTheme.prompt}`;
-    prompt += `. Design style: ${designStyle.prompt}`;
+    prompt += `. Color theme: ${getColorPrompt()}`;
+    prompt += `. Design style: ${getStylePrompt()}`;
+
+    if (uploadedImages.length > 0) {
+      prompt += `. Incorporate visual elements inspired by the ${uploadedImages.length} reference image(s) provided`;
+    }
+
     prompt += `. High quality, professional typography, ready for print`;
 
     return prompt;
@@ -216,12 +300,24 @@ const Poster = () => {
       const prompt = composePrompt();
       console.log('Generated prompt:', prompt);
 
+      // Convert images to base64 if any
+      let imageUrls: string[] = [];
+      if (uploadedImages.length > 0) {
+        // For now, we'll just use the first 4 images (API limit)
+        const imagesToProcess = uploadedImages.slice(0, 4);
+        for (const img of imagesToProcess) {
+          const base64 = await fileToBase64(img.file);
+          imageUrls.push(base64);
+        }
+      }
+
       const { data, error } = await supabase.functions.invoke('generate-ai', {
         body: {
           type: 'image',
           prompt: prompt,
           userId: user.id,
           aspectRatio: aspectRatio.value,
+          referenceImages: imageUrls.length > 0 ? imageUrls : undefined,
         },
       });
 
@@ -237,6 +333,15 @@ const Poster = () => {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
   };
 
   const handleDownload = async () => {
@@ -298,14 +403,92 @@ const Poster = () => {
         </div>
 
         <div className="space-y-4">
-          {/* Step 1: Poster Type */}
+          {/* Step 1: Reference Images Upload */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">1</span>
+                Upload Foto Referensi (Opsional)
+              </CardTitle>
+              <CardDescription>
+                Maksimal {MAX_IMAGES} foto untuk referensi visual (wajah band, produk, dll)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageUpload}
+                accept="image/*"
+                multiple
+                className="hidden"
+                disabled={isGenerating}
+              />
+
+              {/* Upload Area */}
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className={cn(
+                  "border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors",
+                  "hover:border-primary hover:bg-primary/5",
+                  isGenerating && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Klik atau drag foto ke sini
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  JPG, PNG, HEIC (Max 10MB per file)
+                </p>
+              </div>
+
+              {/* Uploaded Images Preview */}
+              {uploadedImages.length > 0 && (
+                <div className="mt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">{uploadedImages.length}/{MAX_IMAGES} foto</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        uploadedImages.forEach(img => URL.revokeObjectURL(img.preview));
+                        setUploadedImages([]);
+                      }}
+                      className="text-destructive"
+                    >
+                      Hapus Semua
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2 md:grid-cols-7">
+                    {uploadedImages.map((img) => (
+                      <div key={img.id} className="relative aspect-square">
+                        <img
+                          src={img.preview}
+                          alt="Reference"
+                          className="w-full h-full object-cover rounded-lg"
+                        />
+                        <button
+                          onClick={() => removeImage(img.id)}
+                          className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Step 2: Poster Type */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">2</span>
                 Jenis Poster
               </CardTitle>
-              <CardDescription>Pilih kategori poster yang ingin dibuat</CardDescription>
             </CardHeader>
             <CardContent>
               <Select value={posterType} onValueChange={setPosterType} disabled={isGenerating}>
@@ -330,11 +513,11 @@ const Poster = () => {
             </CardContent>
           </Card>
 
-          {/* Step 2: Title & Subtitle */}
+          {/* Step 3: Title & Subtitle */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">2</span>
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">3</span>
                 Informasi Utama
               </CardTitle>
             </CardHeader>
@@ -350,7 +533,7 @@ const Poster = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="subtitle">Subjudul / Tagline (Opsional)</Label>
+                <Label htmlFor="subtitle">Subjudul / Tagline</Label>
                 <Input
                   id="subtitle"
                   placeholder="Contoh: Diskon hingga 70%, Join us for amazing experience"
@@ -362,7 +545,7 @@ const Poster = () => {
             </CardContent>
           </Card>
 
-          {/* Step 3: Details (Collapsible) */}
+          {/* Step 4: Details */}
           <Card>
             <CardHeader className="pb-3">
               <button
@@ -370,7 +553,7 @@ const Poster = () => {
                 onClick={() => setShowAdvanced(!showAdvanced)}
               >
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">3</span>
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">4</span>
                   Detail Tambahan (Opsional)
                 </CardTitle>
                 {showAdvanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -412,16 +595,16 @@ const Poster = () => {
             )}
           </Card>
 
-          {/* Step 4: Color Theme */}
+          {/* Step 5: Color Theme */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">4</span>
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">5</span>
                 Tema Warna
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-2 md:grid-cols-5">
+              <div className="grid grid-cols-5 gap-2 mb-4">
                 {COLOR_THEMES.map((theme) => (
                   <button
                     key={theme.id}
@@ -434,24 +617,77 @@ const Poster = () => {
                         : "border-border hover:border-primary/50"
                     )}
                   >
-                    <div className={cn("h-8 w-8 rounded-full", theme.color)} />
-                    <span className="text-xs font-medium">{theme.label}</span>
+                    {theme.id === 'custom' ? (
+                      <div className="h-8 w-8 rounded-full bg-gradient-to-r from-red-500 via-green-500 to-blue-500 flex items-center justify-center">
+                        <Palette className="h-4 w-4 text-white" />
+                      </div>
+                    ) : (
+                      <div className={cn("h-8 w-8 rounded-full", theme.color)} />
+                    )}
+                    <span className="text-[10px] font-medium">{theme.label}</span>
                   </button>
                 ))}
               </div>
+
+              {/* Custom Color Picker */}
+              {colorTheme.id === 'custom' && (
+                <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                  <p className="text-sm font-medium">Pilih Warna Custom:</p>
+                  <div className="flex gap-4">
+                    <div className="flex-1 space-y-2">
+                      <Label className="text-xs">Warna Primer</Label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={customColor1}
+                          onChange={(e) => setCustomColor1(e.target.value)}
+                          className="w-10 h-10 rounded cursor-pointer border-0"
+                        />
+                        <Input
+                          value={customColor1}
+                          onChange={(e) => setCustomColor1(e.target.value)}
+                          className="flex-1 font-mono text-sm"
+                          placeholder="#FF6B6B"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <Label className="text-xs">Warna Sekunder</Label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={customColor2}
+                          onChange={(e) => setCustomColor2(e.target.value)}
+                          className="w-10 h-10 rounded cursor-pointer border-0"
+                        />
+                        <Input
+                          value={customColor2}
+                          onChange={(e) => setCustomColor2(e.target.value)}
+                          className="flex-1 font-mono text-sm"
+                          placeholder="#4ECDC4"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    className="h-8 rounded-lg"
+                    style={{ background: `linear-gradient(to right, ${customColor1}, ${customColor2})` }}
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Step 5: Design Style */}
+          {/* Step 6: Design Style */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">5</span>
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">6</span>
                 Gaya Desain
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 mb-4">
                 {DESIGN_STYLES.map((style) => (
                   <Button
                     key={style.id}
@@ -466,14 +702,28 @@ const Poster = () => {
                   </Button>
                 ))}
               </div>
+
+              {/* Custom Style Input */}
+              {designStyle.id === 'custom' && (
+                <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                  <Label className="text-sm">Deskripsikan gaya desain yang diinginkan:</Label>
+                  <Textarea
+                    placeholder="Contoh: Gaya Y2K dengan efek chrome, futuristic dengan elemen hologram, aesthetic Korea dengan soft tones..."
+                    value={customStyleText}
+                    onChange={(e) => setCustomStyleText(e.target.value)}
+                    rows={3}
+                    disabled={isGenerating}
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Step 6: Aspect Ratio */}
+          {/* Step 7: Aspect Ratio */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">6</span>
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">7</span>
                 Ukuran Poster
               </CardTitle>
             </CardHeader>
