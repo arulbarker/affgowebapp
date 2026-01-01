@@ -49,8 +49,8 @@ const Index = () => {
         {/* Hero */}
         <div className="mb-6 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 p-6">
           <div className="mb-3 flex items-center gap-3">
-            <img src={affGoLogo} alt="AFF GO Logo" className="h-16 w-auto rounded-lg" />
-            <h1 className="text-2xl font-bold">Selamat Datang di AFF GO!</h1>
+            <img src={affGoLogo} alt="Affiliate Go Pro Logo" className="h-16 w-auto rounded-lg" />
+            <h1 className="text-2xl font-bold">Selamat Datang di Affiliate Go Pro!</h1>
           </div>
           <p className="text-muted-foreground">
             Buat konten viral dengan bantuan AI. Tanpa ribet, tanpa typo.

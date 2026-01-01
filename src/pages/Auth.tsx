@@ -30,7 +30,7 @@ const Auth = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       authSchema.parse({ email, password });
     } catch (error) {
@@ -58,7 +58,7 @@ const Auth = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       authSchema.parse({ email, password });
     } catch (error) {
@@ -96,9 +96,9 @@ const Auth = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-lg overflow-hidden">
-            <img src="/aff-go-logo.jpg" alt="AFF GO Logo" className="h-full w-full object-cover" />
+            <img src="/aff-go-logo.jpg" alt="Affiliate Go Pro Logo" className="h-full w-full object-cover" />
           </div>
-          <CardTitle className="text-2xl">AFF GO</CardTitle>
+          <CardTitle className="text-2xl">Affiliate Go Pro</CardTitle>
           <CardDescription>Platform AI untuk kreator Indonesia</CardDescription>
         </CardHeader>
         <CardContent>

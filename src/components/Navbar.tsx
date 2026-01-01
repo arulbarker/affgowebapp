@@ -27,14 +27,14 @@ const Navbar = () => {
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4">
         <div className="flex items-center gap-6">
-          <div 
+          <div
             className="flex cursor-pointer items-center gap-2"
             onClick={() => navigate('/')}
           >
-            <img src={affGoLogo} alt="AFF GO Logo" className="h-8 w-auto" />
-            <span className="font-bold">AFF GO</span>
+            <img src={affGoLogo} alt="Affiliate Go Pro Logo" className="h-8 w-auto" />
+            <span className="font-bold">Affiliate Go Pro</span>
           </div>
-          
+
           {/* Desktop Navigation */}
           <nav className="hidden items-center gap-1 md:flex">
             {desktopNavItems.map((item) => {
@@ -55,7 +55,7 @@ const Navbar = () => {
             })}
           </nav>
         </div>
-        
+
         {user ? (
           <div className="flex items-center gap-2">
             <Button
@@ -67,9 +67,9 @@ const Navbar = () => {
               <Wallet className="h-4 w-4" />
               <span className="text-xs">{formatRupiah(credits)}</span>
             </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => navigate('/profile')}
             >
               <User className="h-4 w-4" />
