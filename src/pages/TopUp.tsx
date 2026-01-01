@@ -1,9 +1,9 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Zap, Star, Crown, Loader2 } from 'lucide-react';
+import { ArrowLeft, Zap, Star, Crown, Loader2, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -48,8 +48,34 @@ const formatRupiah = (amount: number) => {
 
 const TopUp = () => {
   const navigate = useNavigate();
-  const { user, credits, loading } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { user, credits, loading, refreshCredits } = useAuth();
   const [processingPackage, setProcessingPackage] = useState<string | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+
+  // Handle payment success callback
+  useEffect(() => {
+    const status = searchParams.get('status');
+    const transactionStatus = searchParams.get('transaction_status');
+
+    if (status === 'success' || transactionStatus === 'capture' || transactionStatus === 'settlement') {
+      setPaymentSuccess(true);
+      toast.success('Pembayaran berhasil! Saldo akan segera bertambah.');
+
+      // Refresh credits after a short delay to allow webhook processing
+      const refreshInterval = setInterval(() => {
+        refreshCredits();
+      }, 2000);
+
+      // Stop refreshing after 10 seconds
+      setTimeout(() => {
+        clearInterval(refreshInterval);
+      }, 10000);
+
+      // Clear URL params
+      window.history.replaceState({}, '', '/topup');
+    }
+  }, [searchParams, refreshCredits]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -117,9 +143,8 @@ const TopUp = () => {
             return (
               <Card
                 key={pkg.id}
-                className={`relative overflow-hidden transition-all hover:shadow-lg ${
-                  pkg.popular ? 'border-primary' : ''
-                }`}
+                className={`relative overflow-hidden transition-all hover:shadow-lg ${pkg.popular ? 'border-primary' : ''
+                  }`}
               >
                 {pkg.popular && (
                   <Badge className="absolute right-3 top-3">Populer</Badge>
