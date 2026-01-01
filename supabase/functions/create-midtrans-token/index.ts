@@ -77,7 +77,8 @@ serve(async (req) => {
     }
 
     // Create Midtrans Snap transaction
-    const midtransUrl = 'https://app.sandbox.midtrans.com/snap/v1/transactions';
+    // NOTE: Using production URL. Make sure MIDTRANS_SERVER_KEY is also production key
+    const midtransUrl = 'https://app.midtrans.com/snap/v1/transactions';
     
     const authString = btoa(midtransServerKey + ':');
 
