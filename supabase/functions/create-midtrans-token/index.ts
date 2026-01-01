@@ -30,7 +30,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
+
     // Create client with user's token to verify they're authenticated
     const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
       global: {
@@ -39,7 +39,7 @@ serve(async (req) => {
     });
 
     const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-    
+
     if (authError || !user) {
       console.error('Auth error:', authError);
       throw new Error('User not authenticated');
@@ -77,9 +77,12 @@ serve(async (req) => {
     }
 
     // Create Midtrans Snap transaction
-    // NOTE: Using production URL. Make sure MIDTRANS_SERVER_KEY is also production key
-    const midtransUrl = 'https://app.midtrans.com/snap/v1/transactions';
-    
+    // Automatically detect sandbox vs production based on server key prefix
+    const isSandbox = midtransServerKey.startsWith('SB-');
+    const midtransUrl = isSandbox
+      ? 'https://app.sandbox.midtrans.com/snap/v1/transactions'
+      : 'https://app.midtrans.com/snap/v1/transactions';
+
     const authString = btoa(midtransServerKey + ':');
 
     const midtransPayload = {
@@ -120,14 +123,14 @@ serve(async (req) => {
       .eq('order_id', orderId);
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         redirect_url: midtransData.redirect_url,
         token: midtransData.token,
-        order_id: orderId 
+        order_id: orderId
       }),
-      { 
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
+        status: 200
       }
     );
 
@@ -136,9 +139,9 @@ serve(async (req) => {
     console.error('Error in create-midtrans-token:', error);
     return new Response(
       JSON.stringify({ error: errorMessage }),
-      { 
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500 
+        status: 500
       }
     );
   }
