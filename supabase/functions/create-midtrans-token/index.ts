@@ -94,8 +94,11 @@ serve(async (req) => {
         email: user.email,
       },
       callbacks: {
-        finish: `${req.headers.get('origin') || 'https://ec04636f-b231-4c4d-b20c-b49c3f0cda57.lovableproject.com'}/topup?status=success`,
+        finish: `${req.headers.get('origin') || 'https://affgowebapp.vercel.app'}/topup?status=success`,
       },
+      // Webhook notification URL - works even without dashboard configuration
+      // This ensures Midtrans sends payment notifications to our Cloudflare router
+      "callbacks.notification_url": "https://viralgen-midtrans-router.mursalinasrul.workers.dev/",
     };
 
     console.log('Calling Midtrans API with payload:', midtransPayload);
