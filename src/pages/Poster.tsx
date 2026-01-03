@@ -706,7 +706,7 @@ const Poster = () => {
                 className="w-full"
                 size="lg"
                 onClick={handleGenerate}
-                disabled={isGenerating || !posterType || !title.trim()}
+                disabled={isGenerating || (isManualPrompt ? !manualPrompt.trim() : (!posterType || !title.trim()))}
               >
                 {isGenerating ? (
                   <>
