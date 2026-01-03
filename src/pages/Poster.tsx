@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Image, Loader2, Sparkles, Download, Check, ChevronDown, ChevronUp, Palette } from 'lucide-react';
+import { ArrowLeft, Image, Loader2, Sparkles, Download, Check, ChevronDown, ChevronUp, Palette, X, ZoomIn } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -159,6 +159,7 @@ const Poster = () => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -271,20 +272,13 @@ const Poster = () => {
     try {
       toast.info('Menyiapkan download...');
 
-      const { data, error } = await supabase.functions.invoke('download-proxy', {
-        body: {
-          url: generatedImage,
-          filename: `poster-${Date.now()}.png`,
-        },
-      });
-
-      if (error) {
-        window.open(generatedImage, '_blank');
-        toast.info('Gambar dibuka di tab baru. Klik kanan dan pilih "Save image as..."');
-        return;
+      // Fetch the image directly
+      const response = await fetch(generatedImage);
+      if (!response.ok) {
+        throw new Error('Failed to fetch image');
       }
 
-      const blob = new Blob([data], { type: 'image/png' });
+      const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -296,6 +290,7 @@ const Poster = () => {
       toast.success('Download berhasil!');
     } catch (error) {
       console.error('Download error:', error);
+      // Fallback: open in new tab
       window.open(generatedImage, '_blank');
       toast.info('Gambar dibuka di tab baru. Klik kanan dan pilih "Save image as..."');
     }
@@ -672,20 +667,66 @@ const Poster = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <img
-                  src={generatedImage}
-                  alt="Generated poster"
-                  className="w-full rounded-lg shadow-lg"
-                />
-                <Button className="w-full" onClick={handleDownload}>
-                  <Download className="mr-2 h-4 w-4" />
-                  Download Poster HD
-                </Button>
+                <div
+                  className="relative cursor-pointer group"
+                  onClick={() => setShowPreview(true)}
+                >
+                  <img
+                    src={generatedImage}
+                    alt="Generated poster"
+                    className="w-full rounded-lg shadow-lg transition-opacity group-hover:opacity-90"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="bg-black/60 rounded-full p-3">
+                      <ZoomIn className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1" onClick={() => setShowPreview(true)}>
+                    <ZoomIn className="mr-2 h-4 w-4" />
+                    Preview Full
+                  </Button>
+                  <Button className="flex-1" onClick={handleDownload}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Download HD
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
         </div>
       </div>
+
+      {/* Fullscreen Preview Modal */}
+      {showPreview && generatedImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setShowPreview(false)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors"
+            onClick={() => setShowPreview(false)}
+          >
+            <X className="h-8 w-8" />
+          </button>
+          <img
+            src={generatedImage}
+            alt="Preview poster"
+            className="max-w-full max-h-full object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-4">
+            <Button onClick={(e) => { e.stopPropagation(); handleDownload(); }}>
+              <Download className="mr-2 h-4 w-4" />
+              Download HD
+            </Button>
+            <Button variant="outline" onClick={() => setShowPreview(false)}>
+              Tutup
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
