@@ -10,7 +10,6 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 const VIDEO_RESOLUTIONS = [
-  { id: '480p', label: '480p', description: 'Hemat' },
   { id: '720p', label: '720p', description: 'Standar' },
   { id: '1080p', label: '1080p', description: 'Pro' },
 ];
@@ -22,7 +21,6 @@ const VIDEO_DURATIONS = [
 
 // Pricing matrix: resolution -> duration -> price
 const PRICING_MATRIX: Record<string, Record<number, number>> = {
-  '480p': { 5: 4500, 10: 7500 },
   '720p': { 5: 7500, 10: 14000 },
   '1080p': { 5: 11000, 10: 20500 },
 };
@@ -43,7 +41,7 @@ const VideoGenerator = () => {
   const [customPrompt, setCustomPrompt] = useState('');
   const [negativePrompt, setNegativePrompt] = useState('');
   const [audioUrl, setAudioUrl] = useState('');
-  const [selectedResolution, setSelectedResolution] = useState(VIDEO_RESOLUTIONS[1]); // Default 720p
+  const [selectedResolution, setSelectedResolution] = useState(VIDEO_RESOLUTIONS[0]); // Default 720p
   const [selectedDuration, setSelectedDuration] = useState(VIDEO_DURATIONS[0]); // Default 5s
   const [selectedAspectRatio, setSelectedAspectRatio] = useState(ASPECT_RATIOS[0]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -282,31 +280,29 @@ const VideoGenerator = () => {
     try {
       toast.info('Menyiapkan download...');
 
-      // Use download proxy to bypass CORS
-      const { data, error } = await supabase.functions.invoke('download-proxy', {
-        body: {
-          url: generatedVideo,
-          filename: `video-${Date.now()}.mp4`,
-        },
-      });
-
-      if (error) {
-        // Fallback: open in new tab if proxy fails
-        window.open(generatedVideo, '_blank');
-        toast.info('Video dibuka di tab baru. Klik kanan dan pilih "Save video as..."');
-        return;
+      // Direct fetch to properly get the video file
+      const response = await fetch(generatedVideo);
+      if (!response.ok) {
+        throw new Error('Failed to fetch video');
       }
 
-      // Create blob from response
-      const blob = new Blob([data], { type: 'video/mp4' });
+      const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `video-${Date.now()}.mp4`;
+
+      // For mobile compatibility
+      a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+
+      // Cleanup
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
+
       toast.success('Download berhasil!');
     } catch (error) {
       console.error('Download error:', error);
