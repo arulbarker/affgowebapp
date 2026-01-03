@@ -155,6 +155,10 @@ const Poster = () => {
   const [aspectRatio, setAspectRatio] = useState(ASPECT_RATIOS[0]);
   const [resolution, setResolution] = useState(RESOLUTIONS[0]);
 
+  // Manual Prompt Mode
+  const [isManualPrompt, setIsManualPrompt] = useState(false);
+  const [manualPrompt, setManualPrompt] = useState('');
+
   // UI state
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -215,16 +219,6 @@ const Poster = () => {
   };
 
   const handleGenerate = async () => {
-    if (!posterType) {
-      toast.error('Pilih jenis poster terlebih dahulu');
-      return;
-    }
-
-    if (!title.trim()) {
-      toast.error('Tulis judul poster');
-      return;
-    }
-
     if (credits < resolution.cost) {
       toast.error('Saldo tidak cukup. Top up dulu yuk!');
       navigate('/topup');
@@ -236,17 +230,37 @@ const Poster = () => {
       return;
     }
 
+    let finalPrompt = '';
+
+    if (isManualPrompt) {
+      if (!manualPrompt.trim()) {
+        toast.error('Tulis prompt poster terlebih dahulu');
+        return;
+      }
+      finalPrompt = manualPrompt;
+    } else {
+      if (!posterType) {
+        toast.error('Pilih jenis poster terlebih dahulu');
+        return;
+      }
+
+      if (!title.trim()) {
+        toast.error('Tulis judul poster');
+        return;
+      }
+      finalPrompt = composePrompt();
+    }
+
     setIsGenerating(true);
     setGeneratedImage(null);
 
     try {
-      const prompt = composePrompt();
-      console.log('Generated prompt:', prompt);
+      console.log('Generated prompt:', finalPrompt);
 
       const { data, error } = await supabase.functions.invoke('generate-ai', {
         body: {
           type: 'image',
-          prompt: prompt,
+          prompt: finalPrompt,
           userId: user.id,
           aspectRatio: aspectRatio.value,
           resolution: resolution.id,
@@ -353,250 +367,305 @@ const Poster = () => {
             </CardContent>
           </Card>
 
-          {/* Step 2: Poster Type */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">2</span>
-                Jenis Poster
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Select value={posterType} onValueChange={setPosterType} disabled={isGenerating}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih jenis poster..." />
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px]">
-                  {POSTER_CATEGORIES.map((category) => (
-                    <div key={category.category}>
-                      <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
-                        {category.category}
-                      </div>
-                      {category.types.map((type) => (
-                        <SelectItem key={type.id} value={type.id}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </div>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
-
-          {/* Step 3: Title & Subtitle */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">3</span>
-                Informasi Utama
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Judul Poster *</Label>
-                <Input
-                  id="title"
-                  placeholder="Contoh: GRAND OPENING, FLASH SALE 50%, WEBINAR GRATIS"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  disabled={isGenerating}
-                />
+          {/* Manual Prompt Toggle */}
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="flex items-center justify-between p-4">
+              <div className="space-y-1">
+                <Label htmlFor="manual-mode" className="font-bold">Mode Prompt Manual</Label>
+                <p className="text-xs text-muted-foreground">Aktifkan untuk menulis prompt sendiri secara bebas</p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="subtitle">Subjudul / Tagline</Label>
-                <Input
-                  id="subtitle"
-                  placeholder="Contoh: Diskon hingga 70%, Join us for amazing experience"
-                  value={subtitle}
-                  onChange={(e) => setSubtitle(e.target.value)}
-                  disabled={isGenerating}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Step 4: Details */}
-          <Card>
-            <CardHeader className="pb-3">
-              <button
-                className="flex w-full items-center justify-between"
-                onClick={() => setShowAdvanced(!showAdvanced)}
-              >
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">4</span>
-                  Detail Tambahan (Opsional)
-                </CardTitle>
-                {showAdvanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </button>
-            </CardHeader>
-            {showAdvanced && (
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="datetime">Tanggal & Waktu</Label>
-                  <Input
-                    id="datetime"
-                    placeholder="Contoh: 25 Januari 2026, 19:00 WIB"
-                    value={dateTime}
-                    onChange={(e) => setDateTime(e.target.value)}
-                    disabled={isGenerating}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="location">Lokasi / Tempat</Label>
-                  <Input
-                    id="location"
-                    placeholder="Contoh: Grand Ballroom Hotel XYZ, Jakarta"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    disabled={isGenerating}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="contact">Kontak / Info</Label>
-                  <Input
-                    id="contact"
-                    placeholder="Contoh: 0812-3456-7890, @instagram, www.website.com"
-                    value={contact}
-                    onChange={(e) => setContact(e.target.value)}
-                    disabled={isGenerating}
-                  />
-                </div>
-              </CardContent>
-            )}
-          </Card>
-
-          {/* Step 5: Color Theme */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">5</span>
-                Tema Warna
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-5 gap-2 mb-4">
-                {COLOR_THEMES.map((theme) => (
-                  <button
-                    key={theme.id}
-                    onClick={() => setColorTheme(theme)}
-                    disabled={isGenerating}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsManualPrompt(!isManualPrompt)}
+                  className={cn(
+                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                    isManualPrompt ? "bg-primary" : "bg-input"
+                  )}
+                >
+                  <span
                     className={cn(
-                      "flex flex-col items-center gap-1.5 rounded-lg border-2 p-2 transition-all",
-                      colorTheme.id === theme.id
-                        ? "border-primary bg-primary/10"
-                        : "border-border hover:border-primary/50"
+                      "inline-block h-4 w-4 transform rounded-full bg-background transition-transform",
+                      isManualPrompt ? "translate-x-6" : "translate-x-1"
                     )}
-                  >
-                    {theme.id === 'custom' ? (
-                      <div className="h-8 w-8 rounded-full bg-gradient-to-r from-red-500 via-green-500 to-blue-500 flex items-center justify-center">
-                        <Palette className="h-4 w-4 text-white" />
-                      </div>
-                    ) : (
-                      <div className={cn("h-8 w-8 rounded-full", theme.color)} />
-                    )}
-                    <span className="text-[10px] font-medium">{theme.label}</span>
-                  </button>
-                ))}
+                  />
+                </button>
               </div>
+            </CardContent>
+          </Card>
 
-              {/* Custom Color Picker */}
-              {colorTheme.id === 'custom' && (
-                <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-                  <p className="text-sm font-medium">Pilih Warna Custom:</p>
-                  <div className="flex gap-4">
-                    <div className="flex-1 space-y-2">
-                      <Label className="text-xs">Warna Primer</Label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={customColor1}
-                          onChange={(e) => setCustomColor1(e.target.value)}
-                          className="w-10 h-10 rounded cursor-pointer border-0"
-                        />
-                        <Input
-                          value={customColor1}
-                          onChange={(e) => setCustomColor1(e.target.value)}
-                          className="flex-1 font-mono text-sm"
-                          placeholder="#FF6B6B"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex-1 space-y-2">
-                      <Label className="text-xs">Warna Sekunder</Label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={customColor2}
-                          onChange={(e) => setCustomColor2(e.target.value)}
-                          className="w-10 h-10 rounded cursor-pointer border-0"
-                        />
-                        <Input
-                          value={customColor2}
-                          onChange={(e) => setCustomColor2(e.target.value)}
-                          className="flex-1 font-mono text-sm"
-                          placeholder="#4ECDC4"
-                        />
-                      </div>
-                    </div>
+          {isManualPrompt ? (
+            /* Manual Prompt Input */
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">2</span>
+                  Tulis Prompt
+                </CardTitle>
+                <CardDescription>
+                  Jelaskan detail poster yang ingin dibuat dalam bahasa Inggris untuk hasil terbaik
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  placeholder="Describe your poster in detail. Example: A futuristic cyberpunk city poster with neon lights, 80s retro style, highly detailed, 8k resolution..."
+                  value={manualPrompt}
+                  onChange={(e) => setManualPrompt(e.target.value)}
+                  rows={6}
+                  disabled={isGenerating}
+                  className="font-mono text-sm"
+                />
+              </CardContent>
+            </Card>
+          ) : (
+            /* Automatic Steps */
+            <div className="space-y-4">
+              {/* Step 2: Poster Type */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">2</span>
+                    Jenis Poster
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Select value={posterType} onValueChange={setPosterType} disabled={isGenerating}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih jenis poster..." />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px]">
+                      {POSTER_CATEGORIES.map((category) => (
+                        <div key={category.category}>
+                          <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
+                            {category.category}
+                          </div>
+                          {category.types.map((type) => (
+                            <SelectItem key={type.id} value={type.id}>
+                              {type.label}
+                            </SelectItem>
+                          ))}
+                        </div>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </CardContent>
+              </Card>
+
+              {/* Step 3: Title & Subtitle */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">3</span>
+                    Informasi Utama
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Judul Poster *</Label>
+                    <Input
+                      id="title"
+                      placeholder="Contoh: GRAND OPENING, FLASH SALE 50%, WEBINAR GRATIS"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      disabled={isGenerating}
+                    />
                   </div>
-                  <div
-                    className="h-8 rounded-lg"
-                    style={{ background: `linear-gradient(to right, ${customColor1}, ${customColor2})` }}
-                  />
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  <div className="space-y-2">
+                    <Label htmlFor="subtitle">Subjudul / Tagline</Label>
+                    <Input
+                      id="subtitle"
+                      placeholder="Contoh: Diskon hingga 70%, Join us for amazing experience"
+                      value={subtitle}
+                      onChange={(e) => setSubtitle(e.target.value)}
+                      disabled={isGenerating}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
 
-          {/* Step 6: Design Style */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">6</span>
-                Gaya Desain
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2 mb-4">
-                {DESIGN_STYLES.map((style) => (
-                  <Button
-                    key={style.id}
-                    variant={designStyle.id === style.id ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setDesignStyle(style)}
-                    disabled={isGenerating}
-                    className="gap-1"
+              {/* Step 4: Details */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <button
+                    className="flex w-full items-center justify-between"
+                    onClick={() => setShowAdvanced(!showAdvanced)}
                   >
-                    {designStyle.id === style.id && <Check className="h-3 w-3" />}
-                    {style.label}
-                  </Button>
-                ))}
-              </div>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">4</span>
+                      Detail Tambahan (Opsional)
+                    </CardTitle>
+                    {showAdvanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </button>
+                </CardHeader>
+                {showAdvanced && (
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="datetime">Tanggal & Waktu</Label>
+                      <Input
+                        id="datetime"
+                        placeholder="Contoh: 25 Januari 2026, 19:00 WIB"
+                        value={dateTime}
+                        onChange={(e) => setDateTime(e.target.value)}
+                        disabled={isGenerating}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="location">Lokasi / Tempat</Label>
+                      <Input
+                        id="location"
+                        placeholder="Contoh: Grand Ballroom Hotel XYZ, Jakarta"
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                        disabled={isGenerating}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="contact">Kontak / Info</Label>
+                      <Input
+                        id="contact"
+                        placeholder="Contoh: 0812-3456-7890, @instagram, www.website.com"
+                        value={contact}
+                        onChange={(e) => setContact(e.target.value)}
+                        disabled={isGenerating}
+                      />
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
 
-              {/* Custom Style Input */}
-              {designStyle.id === 'custom' && (
-                <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                  <Label className="text-sm">Deskripsikan gaya desain yang diinginkan:</Label>
-                  <Textarea
-                    placeholder="Contoh: Gaya Y2K dengan efek chrome, futuristic dengan elemen hologram, aesthetic Korea dengan soft tones..."
-                    value={customStyleText}
-                    onChange={(e) => setCustomStyleText(e.target.value)}
-                    rows={3}
-                    disabled={isGenerating}
-                  />
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              {/* Step 5: Color Theme */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">5</span>
+                    Tema Warna
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-5 gap-2 mb-4">
+                    {COLOR_THEMES.map((theme) => (
+                      <button
+                        key={theme.id}
+                        onClick={() => setColorTheme(theme)}
+                        disabled={isGenerating}
+                        className={cn(
+                          "flex flex-col items-center gap-1.5 rounded-lg border-2 p-2 transition-all",
+                          colorTheme.id === theme.id
+                            ? "border-primary bg-primary/10"
+                            : "border-border hover:border-primary/50"
+                        )}
+                      >
+                        {theme.id === 'custom' ? (
+                          <div className="h-8 w-8 rounded-full bg-gradient-to-r from-red-500 via-green-500 to-blue-500 flex items-center justify-center">
+                            <Palette className="h-4 w-4 text-white" />
+                          </div>
+                        ) : (
+                          <div className={cn("h-8 w-8 rounded-full", theme.color)} />
+                        )}
+                        <span className="text-[10px] font-medium">{theme.label}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Custom Color Picker */}
+                  {colorTheme.id === 'custom' && (
+                    <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                      <p className="text-sm font-medium">Pilih Warna Custom:</p>
+                      <div className="flex gap-4">
+                        <div className="flex-1 space-y-2">
+                          <Label className="text-xs">Warna Primer</Label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={customColor1}
+                              onChange={(e) => setCustomColor1(e.target.value)}
+                              className="w-10 h-10 rounded cursor-pointer border-0"
+                            />
+                            <Input
+                              value={customColor1}
+                              onChange={(e) => setCustomColor1(e.target.value)}
+                              className="flex-1 font-mono text-sm"
+                              placeholder="#FF6B6B"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <Label className="text-xs">Warna Sekunder</Label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={customColor2}
+                              onChange={(e) => setCustomColor2(e.target.value)}
+                              className="w-10 h-10 rounded cursor-pointer border-0"
+                            />
+                            <Input
+                              value={customColor2}
+                              onChange={(e) => setCustomColor2(e.target.value)}
+                              className="flex-1 font-mono text-sm"
+                              placeholder="#4ECDC4"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div
+                        className="h-8 rounded-lg"
+                        style={{ background: `linear-gradient(to right, ${customColor1}, ${customColor2})` }}
+                      />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Step 6: Design Style */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">6</span>
+                    Gaya Desain
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {DESIGN_STYLES.map((style) => (
+                      <Button
+                        key={style.id}
+                        variant={designStyle.id === style.id ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setDesignStyle(style)}
+                        disabled={isGenerating}
+                        className="gap-1"
+                      >
+                        {designStyle.id === style.id && <Check className="h-3 w-3" />}
+                        {style.label}
+                      </Button>
+                    ))}
+                  </div>
+
+                  {/* Custom Style Input */}
+                  {designStyle.id === 'custom' && (
+                    <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                      <Label className="text-sm">Deskripsikan gaya desain yang diinginkan:</Label>
+                      <Textarea
+                        placeholder="Contoh: Gaya Y2K dengan efek chrome, futuristic dengan elemen hologram, aesthetic Korea dengan soft tones..."
+                        value={customStyleText}
+                        onChange={(e) => setCustomStyleText(e.target.value)}
+                        rows={3}
+                        disabled={isGenerating}
+                      />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {/* Step 7: Aspect Ratio */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">7</span>
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">{isManualPrompt ? 3 : 7}</span>
                 Ukuran Poster
               </CardTitle>
+              {/* <CardDescription>...</CardDescription> */}
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-5 gap-2">
