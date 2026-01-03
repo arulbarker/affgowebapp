@@ -9,9 +9,10 @@ import { ArrowLeft, Video, Loader2, Upload, X, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
-const VIDEO_DURATIONS = [
-  { id: 'short', label: '5 detik', value: 5, cost: 6000 },
-  { id: 'long', label: '10 detik', value: 10, cost: 10000 },
+const VIDEO_RESOLUTIONS = [
+  { id: '480p', label: '480p', description: 'SD', cost: 5500 },
+  { id: '720p', label: '720p', description: 'HD', cost: 9000 },
+  { id: '1080p', label: '1080p', description: 'Full HD', cost: 15000 },
 ];
 
 const ASPECT_RATIOS = [
@@ -30,7 +31,7 @@ const VideoGenerator = () => {
   const [customPrompt, setCustomPrompt] = useState('');
   const [negativePrompt, setNegativePrompt] = useState('');
   const [audioUrl, setAudioUrl] = useState('');
-  const [selectedDuration, setSelectedDuration] = useState(VIDEO_DURATIONS[0]);
+  const [selectedResolution, setSelectedResolution] = useState(VIDEO_RESOLUTIONS[1]); // Default 720p
   const [selectedAspectRatio, setSelectedAspectRatio] = useState(ASPECT_RATIOS[0]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedVideo, setGeneratedVideo] = useState<string | null>(null);
@@ -192,7 +193,7 @@ const VideoGenerator = () => {
       return;
     }
 
-    if (credits < selectedDuration.cost) {
+    if (credits < selectedResolution.cost) {
       toast.error('Saldo tidak cukup. Top up dulu yuk!');
       navigate('/topup');
       return;
@@ -223,7 +224,7 @@ const VideoGenerator = () => {
           negativePrompt: negativePrompt.trim() || undefined,
           audioUrl: audioUrl.trim() || undefined,
           userId: user.id,
-          duration: selectedDuration.value,
+          videoResolution: selectedResolution.id,
         },
       });
 
@@ -398,24 +399,25 @@ const VideoGenerator = () => {
             </CardContent>
           </Card>
 
-          {/* Duration */}
+          {/* Video Quality */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Durasi Video</CardTitle>
+              <CardTitle className="text-base">Kualitas Video</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex gap-2">
-                {VIDEO_DURATIONS.map((duration) => (
+                {VIDEO_RESOLUTIONS.map((res) => (
                   <Button
-                    key={duration.id}
-                    variant={selectedDuration.id === duration.id ? 'default' : 'outline'}
+                    key={res.id}
+                    variant={selectedResolution.id === res.id ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setSelectedDuration(duration)}
+                    onClick={() => setSelectedResolution(res)}
                     disabled={isGenerating}
                     className="flex-1 flex-col h-auto py-3"
                   >
-                    <span>{duration.label}</span>
-                    <span className="text-xs opacity-70">Rp {duration.cost.toLocaleString('id-ID')}</span>
+                    <span className="font-bold">{res.label}</span>
+                    <span className="text-[10px] opacity-70">{res.description}</span>
+                    <span className="text-xs opacity-70">Rp {res.cost.toLocaleString('id-ID')}</span>
                   </Button>
                 ))}
               </div>
@@ -500,7 +502,7 @@ const VideoGenerator = () => {
                 ) : (
                   <>
                     <Video className="mr-2 h-4 w-4" />
-                    Buat Video (Rp {selectedDuration.cost.toLocaleString('id-ID')})
+                    Buat Video (Rp {selectedResolution.cost.toLocaleString('id-ID')})
                   </>
                 )}
               </Button>

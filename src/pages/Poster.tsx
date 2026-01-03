@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,13 +7,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Image, Loader2, Sparkles, Download, Check, ChevronDown, ChevronUp, Upload, X, Palette } from 'lucide-react';
+import { ArrowLeft, Image, Loader2, Sparkles, Download, Check, ChevronDown, ChevronUp, Palette } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
-const COST = 1500;
-const MAX_IMAGES = 14;
+// Resolution options with pricing
+const RESOLUTIONS = [
+  { id: '1k', label: '1K', description: '1024px', size: '1024*1024', cost: 1600 },
+  { id: '2k', label: '2K', description: '2048px', size: '2048*2048', cost: 3000 },
+  { id: '4k', label: '4K', description: '4096px', size: '4096*4096', cost: 4500 },
+];
 
 // Poster Types - Organized by Category
 const POSTER_CATEGORIES = [
@@ -132,16 +136,9 @@ const ASPECT_RATIOS = [
   { id: 'landscape_4_3', label: '4:3', description: 'Landscape', value: 'landscape_4_3' },
 ];
 
-interface UploadedImage {
-  id: string;
-  file: File;
-  preview: string;
-}
-
 const Poster = () => {
   const navigate = useNavigate();
   const { user, credits, loading, refreshCredits } = useAuth();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
   const [posterType, setPosterType] = useState('');
@@ -156,7 +153,7 @@ const Poster = () => {
   const [designStyle, setDesignStyle] = useState(DESIGN_STYLES[0]);
   const [customStyleText, setCustomStyleText] = useState('');
   const [aspectRatio, setAspectRatio] = useState(ASPECT_RATIOS[0]);
-  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
+  const [resolution, setResolution] = useState(RESOLUTIONS[0]);
 
   // UI state
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -169,56 +166,6 @@ const Poster = () => {
     }
   }, [user, loading, navigate]);
 
-  // Cleanup image previews on unmount
-  useEffect(() => {
-    return () => {
-      uploadedImages.forEach(img => URL.revokeObjectURL(img.preview));
-    };
-  }, []);
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-
-    const remainingSlots = MAX_IMAGES - uploadedImages.length;
-    if (remainingSlots <= 0) {
-      toast.error(`Maksimal ${MAX_IMAGES} foto referensi`);
-      return;
-    }
-
-    const newImages: UploadedImage[] = [];
-    const filesToProcess = Math.min(files.length, remainingSlots);
-
-    for (let i = 0; i < filesToProcess; i++) {
-      const file = files[i];
-      if (file.type.startsWith('image/')) {
-        newImages.push({
-          id: `${Date.now()}-${i}`,
-          file,
-          preview: URL.createObjectURL(file),
-        });
-      }
-    }
-
-    setUploadedImages(prev => [...prev, ...newImages]);
-
-    if (files.length > remainingSlots) {
-      toast.info(`Hanya ${filesToProcess} foto yang ditambahkan (max ${MAX_IMAGES})`);
-    }
-
-    // Reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const removeImage = (id: string) => {
-    setUploadedImages(prev => {
-      const img = prev.find(i => i.id === id);
-      if (img) URL.revokeObjectURL(img.preview);
-      return prev.filter(i => i.id !== id);
-    });
-  };
 
   const getColorPrompt = () => {
     if (colorTheme.id === 'custom') {
@@ -261,11 +208,6 @@ const Poster = () => {
 
     prompt += `. Color theme: ${getColorPrompt()}`;
     prompt += `. Design style: ${getStylePrompt()}`;
-
-    if (uploadedImages.length > 0) {
-      prompt += `. Incorporate visual elements inspired by the ${uploadedImages.length} reference image(s) provided`;
-    }
-
     prompt += `. High quality, professional typography, ready for print`;
 
     return prompt;
@@ -282,7 +224,7 @@ const Poster = () => {
       return;
     }
 
-    if (credits < COST) {
+    if (credits < resolution.cost) {
       toast.error('Saldo tidak cukup. Top up dulu yuk!');
       navigate('/topup');
       return;
@@ -300,24 +242,13 @@ const Poster = () => {
       const prompt = composePrompt();
       console.log('Generated prompt:', prompt);
 
-      // Convert images to base64 if any
-      let imageUrls: string[] = [];
-      if (uploadedImages.length > 0) {
-        // For now, we'll just use the first 4 images (API limit)
-        const imagesToProcess = uploadedImages.slice(0, 4);
-        for (const img of imagesToProcess) {
-          const base64 = await fileToBase64(img.file);
-          imageUrls.push(base64);
-        }
-      }
-
       const { data, error } = await supabase.functions.invoke('generate-ai', {
         body: {
           type: 'image',
           prompt: prompt,
           userId: user.id,
           aspectRatio: aspectRatio.value,
-          referenceImages: imageUrls.length > 0 ? imageUrls : undefined,
+          resolution: resolution.id,
         },
       });
 
@@ -334,16 +265,6 @@ const Poster = () => {
       setIsGenerating(false);
     }
   };
-
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = error => reject(error);
-    });
-  };
-
   const handleDownload = async () => {
     if (!generatedImage) return;
 
@@ -403,82 +324,37 @@ const Poster = () => {
         </div>
 
         <div className="space-y-4">
-          {/* Step 1: Reference Images Upload */}
+          {/* Step 1: Resolution */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">1</span>
-                Upload Foto Referensi (Opsional)
+                Kualitas Gambar
               </CardTitle>
               <CardDescription>
-                Maksimal {MAX_IMAGES} foto untuk referensi visual (wajah band, produk, dll)
+                Pilih resolusi gambar yang diinginkan
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleImageUpload}
-                accept="image/*"
-                multiple
-                className="hidden"
-                disabled={isGenerating}
-              />
-
-              {/* Upload Area */}
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className={cn(
-                  "border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors",
-                  "hover:border-primary hover:bg-primary/5",
-                  isGenerating && "opacity-50 cursor-not-allowed"
-                )}
-              >
-                <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  Klik atau drag foto ke sini
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  JPG, PNG, HEIC (Max 10MB per file)
-                </p>
+              <div className="grid grid-cols-3 gap-3">
+                {RESOLUTIONS.map((res) => (
+                  <button
+                    key={res.id}
+                    onClick={() => setResolution(res)}
+                    disabled={isGenerating}
+                    className={cn(
+                      "flex flex-col items-center justify-center rounded-lg border-2 p-4 transition-all",
+                      resolution.id === res.id
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    <span className="text-lg font-bold">{res.label}</span>
+                    <span className="text-xs text-muted-foreground">{res.description}</span>
+                    <span className="mt-1 text-sm font-semibold text-primary">Rp {res.cost.toLocaleString('id-ID')}</span>
+                  </button>
+                ))}
               </div>
-
-              {/* Uploaded Images Preview */}
-              {uploadedImages.length > 0 && (
-                <div className="mt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">{uploadedImages.length}/{MAX_IMAGES} foto</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        uploadedImages.forEach(img => URL.revokeObjectURL(img.preview));
-                        setUploadedImages([]);
-                      }}
-                      className="text-destructive"
-                    >
-                      Hapus Semua
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2 md:grid-cols-7">
-                    {uploadedImages.map((img) => (
-                      <div key={img.id} className="relative aspect-square">
-                        <img
-                          src={img.preview}
-                          alt="Reference"
-                          className="w-full h-full object-cover rounded-lg"
-                        />
-                        <button
-                          onClick={() => removeImage(img.id)}
-                          className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
 
@@ -776,7 +652,7 @@ const Poster = () => {
                 ) : (
                   <>
                     <Sparkles className="mr-2 h-4 w-4" />
-                    Generate Poster (Rp 1.500)
+                    Generate Poster (Rp {resolution.cost.toLocaleString('id-ID')})
                   </>
                 )}
               </Button>
