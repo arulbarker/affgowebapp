@@ -12,6 +12,7 @@ import TopUp from "./pages/TopUp";
 import Poster from "./pages/Poster";
 import VideoGenerator from "./pages/VideoGenerator";
 import Profile from "./pages/Profile";
+import Explore from "./pages/Explore";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const AppLayout = () => {
         <Route path="/topup" element={<TopUp />} />
         <Route path="/poster" element={<Poster />} />
         <Route path="/video" element={<VideoGenerator />} />
+        <Route path="/explore" element={<Explore />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User, Mail, Wallet, History, LogOut, Loader2 } from 'lucide-react';
+import { ArrowLeft, User, Mail, Wallet, History, LogOut, Loader2, Compass, Share2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 const formatRupiah = (amount: number) => {
@@ -22,6 +23,7 @@ interface Generation {
   created_at: string;
   image_url: string | null;
   video_url: string | null;
+  is_public?: boolean;
 }
 
 const Profile = () => {
@@ -39,7 +41,7 @@ const Profile = () => {
   useEffect(() => {
     const fetchGenerations = async () => {
       if (!user) return;
-      
+
       const { data, error } = await supabase
         .from('generations')
         .select('*')
@@ -57,6 +59,31 @@ const Profile = () => {
       fetchGenerations();
     }
   }, [user]);
+
+  const handlePublish = async (gen: Generation) => {
+    if (gen.type !== 'image') {
+      toast.error('Hanya poster yang bisa dipublish ke Explore');
+      return;
+    }
+
+    try {
+      const newStatus = !gen.is_public;
+      const { error } = await supabase
+        .from('generations')
+        .update({ is_public: newStatus })
+        .eq('id', gen.id);
+
+      if (error) throw error;
+
+      setGenerations(prev => prev.map(g =>
+        g.id === gen.id ? { ...g, is_public: newStatus } : g
+      ));
+
+      toast.success(newStatus ? 'Poster berhasil dipublish ke Explore' : 'Poster dihapus dari Explore');
+    } catch (error) {
+      toast.error('Gagal mengupdate status publish');
+    }
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -103,7 +130,7 @@ const Profile = () => {
                 <p className="text-sm text-muted-foreground">Member sejak {new Date(user?.created_at || '').toLocaleDateString('id-ID')}</p>
               </div>
             </div>
-            
+
             <div className="flex items-center justify-between rounded-lg bg-muted p-4">
               <div className="flex items-center gap-2">
                 <Wallet className="h-5 w-5 text-primary" />
@@ -169,9 +196,20 @@ const Profile = () => {
                       <p className="text-sm font-medium text-primary">
                         -{formatRupiah(gen.cost)}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground mb-2">
                         {new Date(gen.created_at).toLocaleDateString('id-ID')}
                       </p>
+                      {gen.type === 'image' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`h-6 text-[10px] ${gen.is_public ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}
+                          onClick={() => handlePublish(gen)}
+                        >
+                          <Compass className="mr-1 h-3 w-3" />
+                          {gen.is_public ? 'Posted' : 'Share'}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}

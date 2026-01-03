@@ -301,6 +301,42 @@ serve(async (req) => {
       throw new Error('No result URL returned');
     }
 
+    // PERSISTENCE BLOCK: Upload to Supabase Storage (Images only)
+    if (type === 'image') {
+      try {
+        console.log('Persisting image to permanent storage...', resultUrl);
+        const imageResponse = await fetch(resultUrl);
+
+        if (imageResponse.ok) {
+          const imageBlob = await imageResponse.blob();
+          const timestamp = Date.now();
+          const randomId = crypto.randomUUID().split('-')[0];
+          const fileName = `${userId}/${timestamp}_${randomId}.png`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('generations')
+            .upload(fileName, imageBlob, {
+              contentType: 'image/png',
+              upsert: false
+            });
+
+          if (uploadError) {
+            console.error('Storage upload error:', uploadError);
+          } else {
+            const { data: { publicUrl } } = supabase.storage
+              .from('generations')
+              .getPublicUrl(fileName);
+
+            console.log('Image persisted successfully:', publicUrl);
+            resultUrl = publicUrl; // Use permanent URL for DB and Response
+          }
+        }
+      } catch (storageError) {
+        console.error('Error persisting image to storage:', storageError);
+        // Continue with original URL if persistence fails
+      }
+    }
+
     // Deduct credits (only for immediate results like images)
     const newCredits = profile.credits - cost;
     await supabase
