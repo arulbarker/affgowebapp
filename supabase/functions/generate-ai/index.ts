@@ -14,9 +14,9 @@ const COSTS = {
 
 // Video pricing matrix: resolution -> duration -> price
 const VIDEO_PRICING: Record<string, Record<number, number>> = {
-  '480p': { 5: 4500, 8: 6500 },
-  '720p': { 5: 7500, 8: 11500 },
-  '1080p': { 5: 11000, 8: 16500 },
+  '480p': { 5: 4500, 10: 6500 },
+  '720p': { 5: 7500, 10: 11500 },
+  '1080p': { 5: 11000, 10: 16500 },
 };
 
 serve(async (req) => {
@@ -237,9 +237,10 @@ serve(async (req) => {
         throw new Error('Image URL is required for video generation');
       }
 
-      // Map video resolution
+      // Map video resolution and duration
       const targetResolution = videoResolution || '720p';
-      console.log('Calling Atlas Cloud WAN 2.6 for video generation at', targetResolution);
+      const targetDuration = duration || 5;
+      console.log('Calling Atlas Cloud WAN 2.6 for video generation at', targetResolution, 'for', targetDuration, 'seconds');
 
       const atlasResponse = await fetch('https://api.atlascloud.ai/api/v1/model/generateVideo', {
         method: 'POST',
@@ -252,7 +253,7 @@ serve(async (req) => {
           image: imageUrl,
           prompt: prompt || "Make this image come alive with natural, cinematic motion and ambient sounds",
           negative_prompt: negativePrompt || "blur, distortion, low quality, ugly, deformed",
-          duration: 5,
+          duration: targetDuration,
           resolution: targetResolution,
           enable_prompt_expansion: false,
           seed: -1,

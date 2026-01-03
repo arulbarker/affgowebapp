@@ -17,14 +17,14 @@ const VIDEO_RESOLUTIONS = [
 
 const VIDEO_DURATIONS = [
   { id: 5, label: '5 Detik', value: 5 },
-  { id: 8, label: '8 Detik', value: 8 },
+  { id: 10, label: '10 Detik', value: 10 },
 ];
 
 // Pricing matrix: resolution -> duration -> price
 const PRICING_MATRIX: Record<string, Record<number, number>> = {
-  '480p': { 5: 4500, 8: 6500 },
-  '720p': { 5: 7500, 8: 11500 },
-  '1080p': { 5: 11000, 8: 16500 },
+  '480p': { 5: 4500, 10: 6500 },
+  '720p': { 5: 7500, 10: 11500 },
+  '1080p': { 5: 11000, 10: 16500 },
 };
 
 const ASPECT_RATIOS = [
