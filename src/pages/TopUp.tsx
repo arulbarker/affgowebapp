@@ -16,7 +16,7 @@ const packages = [
     description: 'Cocok untuk coba-coba',
     icon: Zap,
     popular: false,
-    features: ['Hingga 9x Buat Poster', 'Hingga 2x Hidupkan Foto'],
+    features: ['Hingga 5x Buat Poster', 'Hingga 2x Hidupkan Foto'],
   },
   {
     id: 'kreator',
@@ -25,7 +25,7 @@ const packages = [
     description: 'Untuk kreator aktif',
     icon: Star,
     popular: true,
-    features: ['Hingga 31x Buat Poster', 'Hingga 6x Hidupkan Foto'],
+    features: ['Hingga 16x Buat Poster', 'Hingga 6x Hidupkan Foto'],
   },
   {
     id: 'sultan',
@@ -34,7 +34,7 @@ const packages = [
     description: 'Unlimited creativity',
     icon: Crown,
     popular: false,
-    features: ['Hingga 62x Buat Poster', 'Hingga 13x Hidupkan Foto'],
+    features: ['Hingga 33x Buat Poster', 'Hingga 13x Hidupkan Foto'],
   },
 ];
 
