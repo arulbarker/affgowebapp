@@ -310,7 +310,8 @@ serve(async (req) => {
         if (imageResponse.ok) {
           const imageBlob = await imageResponse.blob();
           const timestamp = Date.now();
-          const randomId = crypto.randomUUID().split('-')[0];
+          // Use simple random string to avoid potential crypto issues in some environments
+          const randomId = Math.random().toString(36).substring(2, 10);
           const fileName = `${userId}/${timestamp}_${randomId}.png`;
 
           const { error: uploadError } = await supabase.storage
