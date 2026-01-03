@@ -7,9 +7,12 @@ const corsHeaders = {
 };
 
 const COSTS = {
-  image: 1500,  // Rp 1.500 per poster
-  video_5: 6000,  // Rp 6.000 per 5s video
-  video_8: 8000,  // Rp 8.000 per 8s video
+  image_1k: 1600,   // Rp 1.600 per 1K (1024x1024) image
+  image_2k: 3000,   // Rp 3.000 per 2K (2048x2048) image
+  image_4k: 4500,   // Rp 4.500 per 4K (4096x4096) image
+  video_480p: 5500,   // Rp 5.500 per 480p video
+  video_720p: 9000,   // Rp 9.000 per 720p video
+  video_1080p: 15000, // Rp 15.000 per 1080p video
 };
 
 serve(async (req) => {
@@ -18,8 +21,8 @@ serve(async (req) => {
   }
 
   try {
-    const { type, prompt, imageUrl, userId, aspectRatio, duration, negativePrompt, audioUrl } = await req.json();
-    
+    const { type, prompt, imageUrl, userId, aspectRatio, duration, negativePrompt, audioUrl, resolution, videoResolution } = await req.json();
+
     console.log('Generate AI request:', { type, prompt, userId, aspectRatio, duration });
 
     if (!type || !userId) {
@@ -35,7 +38,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
+
     // Create client with user's token to verify they're authenticated
     const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
       global: {
@@ -44,7 +47,7 @@ serve(async (req) => {
     });
 
     const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-    
+
     if (authError || !user) {
       console.error('Auth error:', authError);
       throw new Error('User not authenticated');
@@ -79,12 +82,26 @@ serve(async (req) => {
       throw new Error('User profile not found');
     }
 
-    // Calculate cost based on type and duration
+    // Calculate cost based on type, duration, and resolution
     let cost: number;
     if (type === 'image') {
-      cost = COSTS.image;
+      // Resolution-based pricing for images
+      if (resolution === '4k') {
+        cost = COSTS.image_4k;
+      } else if (resolution === '2k') {
+        cost = COSTS.image_2k;
+      } else {
+        cost = COSTS.image_1k; // Default to 1K
+      }
     } else if (type === 'video') {
-      cost = duration === 8 ? COSTS.video_8 : COSTS.video_5;
+      // Resolution-based pricing for videos
+      if (videoResolution === '1080p') {
+        cost = COSTS.video_1080p;
+      } else if (videoResolution === '480p') {
+        cost = COSTS.video_480p;
+      } else {
+        cost = COSTS.video_720p; // Default to 720p
+      }
     } else {
       throw new Error('Invalid generation type');
     }
@@ -96,88 +113,122 @@ serve(async (req) => {
     let resultUrl: string;
 
     if (type === 'image') {
-      // Generate image using Fal.ai Gemini 3 Pro Image
+      // Generate image using Atlas Cloud ByteDance Seedream v4.5
       if (!prompt) {
         throw new Error('Prompt is required for image generation');
       }
 
-      console.log('Calling Fal.ai Gemini 3 Pro Image for poster generation...');
-      
-      // Map aspect ratio from frontend to Gemini format
-      const aspectRatioMap: Record<string, string> = {
-        'square': '1:1',
-        'square_hd': '1:1',
-        'portrait_4_3': '3:4',
-        'portrait_16_9': '9:16',
-        'landscape_4_3': '4:3',
-        'landscape_16_9': '16:9',
+      console.log('Calling Atlas Cloud Seedream v4.5 for image generation...');
+
+      // Map resolution to size
+      let imageSize = '1024*1024'; // Default 1K
+      if (resolution === '2k') {
+        imageSize = '2048*2048';
+      } else if (resolution === '4k') {
+        imageSize = '4096*4096';
+      }
+
+      // Map aspect ratio to appropriate size
+      const aspectRatioSizes: Record<string, Record<string, string>> = {
+        '1k': {
+          'square': '1024*1024',
+          'square_hd': '1024*1024',
+          'portrait_4_3': '896*1152',
+          'portrait_16_9': '768*1344',
+          'landscape_4_3': '1152*896',
+          'landscape_16_9': '1344*768',
+        },
+        '2k': {
+          'square': '2048*2048',
+          'square_hd': '2048*2048',
+          'portrait_4_3': '1792*2304',
+          'portrait_16_9': '1536*2688',
+          'landscape_4_3': '2304*1792',
+          'landscape_16_9': '2688*1536',
+        },
+        '4k': {
+          'square': '4096*4096',
+          'square_hd': '4096*4096',
+          'portrait_4_3': '3584*4608',
+          'portrait_16_9': '3072*5376',
+          'landscape_4_3': '4608*3584',
+          'landscape_16_9': '5376*3072',
+        },
       };
-      
-      const geminiAspectRatio = aspectRatioMap[aspectRatio] || '1:1';
-      
-      const falResponse = await fetch('https://queue.fal.run/fal-ai/gemini-3-pro-image-preview', {
+
+      const resKey = resolution || '1k';
+      const arKey = aspectRatio || 'square';
+      imageSize = aspectRatioSizes[resKey]?.[arKey] || aspectRatioSizes[resKey]?.['square'] || '1024*1024';
+
+      console.log('Using size:', imageSize, 'for resolution:', resKey, 'aspect ratio:', arKey);
+
+      const atlasResponse = await fetch('https://api.atlascloud.ai/api/v1/model/generateImage', {
         method: 'POST',
         headers: {
-          'Authorization': `Key ${falKey}`,
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${atlasCloudKey}`,
         },
         body: JSON.stringify({
+          model: 'bytedance/seedream-v4.5',
           prompt: prompt,
-          aspect_ratio: geminiAspectRatio,
-          num_images: 1,
-          output_format: 'png',
-          resolution: '2K',
+          size: imageSize,
+          enable_base64_output: false,
         }),
       });
 
-      if (!falResponse.ok) {
-        const errorText = await falResponse.text();
-        console.error('Fal.ai error:', errorText);
+      if (!atlasResponse.ok) {
+        const errorText = await atlasResponse.text();
+        console.error('Atlas Cloud Seedream error:', errorText);
         throw new Error('Gagal generate gambar');
       }
 
-      const falData = await falResponse.json();
-      console.log('Fal.ai Gemini image response:', falData);
+      const atlasData = await atlasResponse.json();
+      console.log('Atlas Cloud Seedream response:', atlasData);
 
-      // Handle async queue response
-      if (falData.request_id) {
+      // Handle async polling
+      const predictionId = atlasData.data?.id;
+      if (predictionId) {
         // Poll for result
         let attempts = 0;
-        const maxAttempts = 90;
-        
+        const maxAttempts = 120; // 4 minutes with 2s intervals
+
         while (attempts < maxAttempts) {
           await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          const statusResponse = await fetch(`https://queue.fal.run/fal-ai/gemini-3-pro-image-preview/requests/${falData.request_id}/status`, {
+
+          const pollResponse = await fetch(`https://api.atlascloud.ai/api/v1/model/prediction/${predictionId}`, {
             headers: {
-              'Authorization': `Key ${falKey}`,
+              'Authorization': `Bearer ${atlasCloudKey}`,
             },
           });
-          
-          const statusData = await statusResponse.json();
-          console.log('Status check:', statusData);
-          
-          if (statusData.status === 'COMPLETED') {
-            const resultResponse = await fetch(`https://queue.fal.run/fal-ai/gemini-3-pro-image-preview/requests/${falData.request_id}`, {
-              headers: {
-                'Authorization': `Key ${falKey}`,
-              },
-            });
-            const resultData = await resultResponse.json();
-            resultUrl = resultData.images?.[0]?.url;
-            break;
-          } else if (statusData.status === 'FAILED') {
-            throw new Error('Image generation failed');
+
+          if (!pollResponse.ok) {
+            console.error('Poll error:', await pollResponse.text());
+            attempts++;
+            continue;
           }
-          
+
+          const pollData = await pollResponse.json();
+          console.log('Poll status:', pollData.data?.status);
+
+          if (pollData.data?.status === 'completed' || pollData.data?.status === 'succeeded') {
+            resultUrl = pollData.data?.outputs?.[0];
+            break;
+          } else if (pollData.data?.status === 'failed') {
+            throw new Error(pollData.data?.error || 'Image generation failed');
+          }
+
           attempts++;
         }
-        
-        if (!resultUrl!) {
+
+        if (!resultUrl) {
           throw new Error('Generation timed out');
         }
+      } else if (atlasData.data?.outputs?.[0]) {
+        // Immediate result
+        resultUrl = atlasData.data.outputs[0];
       } else {
-        resultUrl = falData.images?.[0]?.url;
+        console.error('Unexpected Atlas Cloud response:', atlasData);
+        throw new Error('Unexpected response from Atlas Cloud');
       }
 
     } else if (type === 'video') {
@@ -186,7 +237,9 @@ serve(async (req) => {
         throw new Error('Image URL is required for video generation');
       }
 
-      console.log('Calling Atlas Cloud WAN 2.6 for video generation...');
+      // Map video resolution
+      const targetResolution = videoResolution || '720p';
+      console.log('Calling Atlas Cloud WAN 2.6 for video generation at', targetResolution);
 
       const atlasResponse = await fetch('https://api.atlascloud.ai/api/v1/model/generateVideo', {
         method: 'POST',
@@ -199,13 +252,13 @@ serve(async (req) => {
           image: imageUrl,
           prompt: prompt || "Make this image come alive with natural, cinematic motion and ambient sounds",
           negative_prompt: negativePrompt || "blur, distortion, low quality, ugly, deformed",
-          duration: duration === 8 ? 8 : 5,
-          resolution: "720p",
+          duration: 5,
+          resolution: targetResolution,
           enable_prompt_expansion: false,
           seed: -1,
           shot_type: "single",
           generate_audio: true,
-          ...(audioUrl && { audio_url: audioUrl }),
+          ...(audioUrl && { audio: audioUrl }),
         }),
       });
 
@@ -222,15 +275,15 @@ serve(async (req) => {
       const predictionId = atlasData.data?.id;
       if (predictionId) {
         return new Response(
-          JSON.stringify({ 
+          JSON.stringify({
             success: true,
             status: 'processing',
             predictionId: predictionId,
             cost: cost,
           }),
-          { 
+          {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200 
+            status: 200
           }
         );
       } else if (atlasData.data?.outputs?.[0]) {
@@ -270,14 +323,14 @@ serve(async (req) => {
     console.log('Generation successful:', { type, resultUrl, newCredits });
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         success: true,
         url: resultUrl,
         newCredits: newCredits,
       }),
-      { 
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
+        status: 200
       }
     );
 
@@ -286,9 +339,9 @@ serve(async (req) => {
     console.error('Error in generate-ai:', error);
     return new Response(
       JSON.stringify({ error: errorMessage }),
-      { 
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500 
+        status: 500
       }
     );
   }

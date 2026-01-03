@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 const VIDEO_DURATIONS = [
   { id: 'short', label: '5 detik', value: 5, cost: 6000 },
-  { id: 'long', label: '8 detik', value: 8, cost: 8000 },
+  { id: 'long', label: '10 detik', value: 10, cost: 10000 },
 ];
 
 const ASPECT_RATIOS = [
@@ -144,7 +144,7 @@ const VideoGenerator = () => {
   };
 
   const pollVideoStatus = async (
-    predictionId: string, 
+    predictionId: string,
     cost: number,
     prompt: string
   ): Promise<string> => {
@@ -172,7 +172,7 @@ const VideoGenerator = () => {
         } else if (data.status === 'FAILED') {
           throw new Error(data.error || 'Video generation failed');
         }
-        
+
         // Still in progress, continue polling
         console.log('Video status:', data.status);
       } catch (err) {
@@ -211,12 +211,12 @@ const VideoGenerator = () => {
       const imageUrl = await uploadImageToStorage(selectedImage);
       setIsUploading(false);
 
-      const fullPrompt = customPrompt.trim() 
+      const fullPrompt = customPrompt.trim()
         ? customPrompt
         : 'Make this image come alive with natural, cinematic motion';
 
       const { data, error } = await supabase.functions.invoke('generate-ai', {
-        body: { 
+        body: {
           type: 'video',
           imageUrl: imageUrl,
           prompt: fullPrompt,
@@ -233,13 +233,13 @@ const VideoGenerator = () => {
       // If video is processing, poll for status
       if (data.status === 'processing' && data.predictionId) {
         toast.info('Video sedang diproses, mohon tunggu 2-5 menit...');
-        
+
         const videoUrl = await pollVideoStatus(
           data.predictionId,
           data.cost,
           fullPrompt
         );
-        
+
         setGeneratedVideo(videoUrl);
         await refreshCredits();
         toast.success('Video berhasil dibuat!');
@@ -260,10 +260,10 @@ const VideoGenerator = () => {
 
   const handleDownload = async () => {
     if (!generatedVideo) return;
-    
+
     try {
       toast.info('Menyiapkan download...');
-      
+
       // Use download proxy to bypass CORS
       const { data, error } = await supabase.functions.invoke('download-proxy', {
         body: {
