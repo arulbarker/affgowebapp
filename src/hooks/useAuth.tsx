@@ -1,12 +1,14 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
   credits: number;
+  emailConfirmed: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -20,6 +22,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [credits, setCredits] = useState(0);
+  const [emailConfirmed, setEmailConfirmed] = useState(false);
 
   const fetchCredits = async (userId: string) => {
     const { data, error } = await supabase
@@ -27,14 +30,69 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       .select('credits')
       .eq('id', userId)
       .maybeSingle();
-    
+
     if (data && !error) {
       setCredits(data.credits);
     }
   };
 
+  // Handle email confirmation from URL hash
+  const handleEmailConfirmation = async () => {
+    const hash = window.location.hash;
+
+    // Check if URL contains confirmation token (from email link)
+    if (hash && (hash.includes('access_token') || hash.includes('type=signup') || hash.includes('type=email'))) {
+      try {
+        // Parse the hash parameters
+        const params = new URLSearchParams(hash.substring(1));
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        const type = params.get('type');
+
+        if (accessToken && refreshToken) {
+          // Set the session using the tokens from URL
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+
+          if (!error && data.session) {
+            // Session set successfully
+            setEmailConfirmed(true);
+
+            // Show success notification based on type
+            if (type === 'signup') {
+              toast.success('🎉 Email berhasil dikonfirmasi! Selamat datang!', {
+                description: 'Akun Anda sudah aktif dan siap digunakan.',
+                duration: 5000,
+              });
+            } else {
+              toast.success('✅ Email berhasil dikonfirmasi!', {
+                description: 'Silakan lanjutkan menggunakan aplikasi.',
+                duration: 5000,
+              });
+            }
+
+            // Clean up the URL hash to remove tokens
+            window.history.replaceState(null, '', window.location.pathname);
+          } else if (error) {
+            console.error('Error setting session:', error);
+            toast.error('Gagal memproses konfirmasi email', {
+              description: error.message,
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Error handling email confirmation:', err);
+      }
+    }
+  };
+
   useEffect(() => {
-    // Set up auth state listener FIRST
+    // Handle email confirmation from URL hash FIRST
+    handleEmailConfirmation();
+
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
@@ -48,6 +106,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }, 0);
         } else {
           setCredits(0);
+        }
+
+        // Handle specific auth events
+        if (event === 'SIGNED_IN' && emailConfirmed) {
+          // User just confirmed email and signed in
+          setEmailConfirmed(false);
         }
       }
     );
@@ -72,7 +136,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signUp = async (email: string, password: string) => {
-    const redirectUrl = `${window.location.origin}/`;
+    const redirectUrl = `${window.location.origin}/auth`;
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -95,7 +159,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, credits, signIn, signUp, signOut, refreshCredits }}>
+    <AuthContext.Provider value={{ user, session, loading, credits, emailConfirmed, signIn, signUp, signOut, refreshCredits }}>
       {children}
     </AuthContext.Provider>
   );

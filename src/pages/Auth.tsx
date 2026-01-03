@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, CheckCircle2 } from 'lucide-react';
 import { z } from 'zod';
 
 const authSchema = z.object({
@@ -17,10 +17,27 @@ const authSchema = z.object({
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { user, signIn, signUp, loading } = useAuth();
+  const { user, signIn, signUp, loading, emailConfirmed } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showConfirmationSuccess, setShowConfirmationSuccess] = useState(false);
+
+  // Detect email confirmation from URL hash
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && (hash.includes('access_token') || hash.includes('type=signup'))) {
+      setShowConfirmationSuccess(true);
+      // The actual token processing happens in useAuth
+    }
+  }, []);
+
+  // Show confirmation success state
+  useEffect(() => {
+    if (emailConfirmed) {
+      setShowConfirmationSuccess(true);
+    }
+  }, [emailConfirmed]);
 
   useEffect(() => {
     if (user && !loading) {
@@ -87,6 +104,30 @@ const Auth = () => {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Show email confirmation success message
+  if (showConfirmationSuccess && user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md text-center">
+          <CardHeader>
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+              <CheckCircle2 className="h-10 w-10 text-green-600" />
+            </div>
+            <CardTitle className="text-2xl text-green-600">Email Berhasil Dikonfirmasi!</CardTitle>
+            <CardDescription className="text-base">
+              Selamat datang di Affiliate Go Pro! Akun Anda sudah aktif dan siap digunakan.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => navigate('/')} className="w-full">
+              Mulai Gunakan Aplikasi
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
