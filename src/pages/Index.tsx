@@ -12,7 +12,7 @@ const features = [
     title: 'Buat Poster',
     description: 'Bikin poster anti typo dengan AI',
     icon: Image,
-    price: 'Rp 1.500/gambar',
+    price: 'Mulai Rp 1.600/gambar',
     color: 'bg-primary/10 text-primary',
   },
   {
@@ -20,7 +20,7 @@ const features = [
     title: 'Hidupkan Foto',
     description: 'Ubah foto jadi video yang bergerak',
     icon: Video,
-    price: 'Rp 6.000/video',
+    price: 'Mulai Rp 7.500/video',
     color: 'bg-primary/10 text-primary',
   },
 ];
