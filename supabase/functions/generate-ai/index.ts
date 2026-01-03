@@ -10,9 +10,13 @@ const COSTS = {
   image_1k: 1600,   // Rp 1.600 per 1K (1024x1024) image
   image_2k: 3000,   // Rp 3.000 per 2K (2048x2048) image
   image_4k: 4500,   // Rp 4.500 per 4K (4096x4096) image
-  video_480p: 5500,   // Rp 5.500 per 480p video
-  video_720p: 9000,   // Rp 9.000 per 720p video
-  video_1080p: 15000, // Rp 15.000 per 1080p video
+};
+
+// Video pricing matrix: resolution -> duration -> price
+const VIDEO_PRICING: Record<string, Record<number, number>> = {
+  '480p': { 5: 4500, 8: 6500 },
+  '720p': { 5: 7500, 8: 11500 },
+  '1080p': { 5: 11000, 8: 16500 },
 };
 
 serve(async (req) => {
@@ -94,14 +98,10 @@ serve(async (req) => {
         cost = COSTS.image_1k; // Default to 1K
       }
     } else if (type === 'video') {
-      // Resolution-based pricing for videos
-      if (videoResolution === '1080p') {
-        cost = COSTS.video_1080p;
-      } else if (videoResolution === '480p') {
-        cost = COSTS.video_480p;
-      } else {
-        cost = COSTS.video_720p; // Default to 720p
-      }
+      // Resolution + Duration based pricing for videos
+      const resKey = videoResolution || '720p';
+      const durKey = duration || 5;
+      cost = VIDEO_PRICING[resKey]?.[durKey] || VIDEO_PRICING['720p'][5];
     } else {
       throw new Error('Invalid generation type');
     }

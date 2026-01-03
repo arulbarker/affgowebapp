@@ -10,10 +10,22 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 const VIDEO_RESOLUTIONS = [
-  { id: '480p', label: '480p', description: 'SD', cost: 5500 },
-  { id: '720p', label: '720p', description: 'HD', cost: 9000 },
-  { id: '1080p', label: '1080p', description: 'Full HD', cost: 15000 },
+  { id: '480p', label: '480p', description: 'Hemat' },
+  { id: '720p', label: '720p', description: 'Standar' },
+  { id: '1080p', label: '1080p', description: 'Pro' },
 ];
+
+const VIDEO_DURATIONS = [
+  { id: 5, label: '5 Detik', value: 5 },
+  { id: 8, label: '8 Detik', value: 8 },
+];
+
+// Pricing matrix: resolution -> duration -> price
+const PRICING_MATRIX: Record<string, Record<number, number>> = {
+  '480p': { 5: 4500, 8: 6500 },
+  '720p': { 5: 7500, 8: 11500 },
+  '1080p': { 5: 11000, 8: 16500 },
+};
 
 const ASPECT_RATIOS = [
   { id: '9:16', label: '9:16', description: 'Portrait (Reels/TikTok)', width: 720, height: 1280 },
@@ -32,10 +44,14 @@ const VideoGenerator = () => {
   const [negativePrompt, setNegativePrompt] = useState('');
   const [audioUrl, setAudioUrl] = useState('');
   const [selectedResolution, setSelectedResolution] = useState(VIDEO_RESOLUTIONS[1]); // Default 720p
+  const [selectedDuration, setSelectedDuration] = useState(VIDEO_DURATIONS[0]); // Default 5s
   const [selectedAspectRatio, setSelectedAspectRatio] = useState(ASPECT_RATIOS[0]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedVideo, setGeneratedVideo] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Calculate current cost based on resolution and duration
+  const currentCost = PRICING_MATRIX[selectedResolution.id]?.[selectedDuration.value] || 7500;
 
   useEffect(() => {
     if (!loading && !user) {
@@ -193,7 +209,7 @@ const VideoGenerator = () => {
       return;
     }
 
-    if (credits < selectedResolution.cost) {
+    if (credits < currentCost) {
       toast.error('Saldo tidak cukup. Top up dulu yuk!');
       navigate('/topup');
       return;
@@ -225,6 +241,7 @@ const VideoGenerator = () => {
           audioUrl: audioUrl.trim() || undefined,
           userId: user.id,
           videoResolution: selectedResolution.id,
+          duration: selectedDuration.value,
         },
       });
 
@@ -404,22 +421,50 @@ const VideoGenerator = () => {
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Kualitas Video</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="flex gap-2">
-                {VIDEO_RESOLUTIONS.map((res) => (
-                  <Button
-                    key={res.id}
-                    variant={selectedResolution.id === res.id ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setSelectedResolution(res)}
-                    disabled={isGenerating}
-                    className="flex-1 flex-col h-auto py-3"
-                  >
-                    <span className="font-bold">{res.label}</span>
-                    <span className="text-[10px] opacity-70">{res.description}</span>
-                    <span className="text-xs opacity-70">Rp {res.cost.toLocaleString('id-ID')}</span>
-                  </Button>
-                ))}
+            <CardContent className="space-y-4">
+              {/* Resolution Selection */}
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Resolusi</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {VIDEO_RESOLUTIONS.map((res) => (
+                    <Button
+                      key={res.id}
+                      variant={selectedResolution.id === res.id ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSelectedResolution(res)}
+                      disabled={isGenerating}
+                      className="flex-col h-auto py-2"
+                    >
+                      <span className="font-bold">{res.label}</span>
+                      <span className="text-[10px] opacity-70">{res.description}</span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Duration Selection */}
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Durasi</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {VIDEO_DURATIONS.map((dur) => (
+                    <Button
+                      key={dur.id}
+                      variant={selectedDuration.id === dur.id ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSelectedDuration(dur)}
+                      disabled={isGenerating}
+                      className="flex-col h-auto py-2"
+                    >
+                      <span className="font-bold">{dur.label}</span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Price Display */}
+              <div className="bg-primary/10 rounded-lg p-3 text-center">
+                <p className="text-sm text-muted-foreground">Harga</p>
+                <p className="text-xl font-bold text-primary">Rp {currentCost.toLocaleString('id-ID')}</p>
               </div>
             </CardContent>
           </Card>
@@ -502,7 +547,7 @@ const VideoGenerator = () => {
                 ) : (
                   <>
                     <Video className="mr-2 h-4 w-4" />
-                    Buat Video (Rp {selectedResolution.cost.toLocaleString('id-ID')})
+                    Buat Video (Rp {currentCost.toLocaleString('id-ID')})
                   </>
                 )}
               </Button>
