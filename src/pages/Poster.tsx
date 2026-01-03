@@ -11,6 +11,7 @@ import { ArrowLeft, Image, Loader2, Sparkles, Download, Check, ChevronDown, Chev
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { useGeneration } from '@/context/GenerationContext';
 
 // Resolution options with pricing
 const RESOLUTIONS = [
@@ -160,8 +161,6 @@ const Poster = () => {
 
   // UI state
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
@@ -217,6 +216,12 @@ const Poster = () => {
     return prompt;
   };
 
+  // Context
+  const { startGeneration, isGenerating: isGlobalGenerating, getTaskByType } = useGeneration();
+  const activeTask = getTaskByType('poster');
+  const isGenerating = isGlobalGenerating && activeTask?.status === 'pending';
+  const generatedImage = activeTask?.status === 'success' ? activeTask.resultUrl : null;
+
   const handleGenerate = async () => {
     if (credits < resolution.cost) {
       toast.error('Saldo tidak cukup. Top up dulu yuk!');
@@ -242,7 +247,6 @@ const Poster = () => {
         toast.error('Pilih jenis poster terlebih dahulu');
         return;
       }
-
       if (!title.trim()) {
         toast.error('Tulis judul poster');
         return;
@@ -250,34 +254,14 @@ const Poster = () => {
       finalPrompt = composePrompt();
     }
 
-    setIsGenerating(true);
-    setGeneratedImage(null);
-
-    try {
-      console.log('Generated prompt:', finalPrompt);
-
-      const { data, error } = await supabase.functions.invoke('generate-ai', {
-        body: {
-          type: 'image',
-          prompt: finalPrompt,
-          userId: user.id,
-          aspectRatio: aspectRatio.value,
-          resolution: resolution.id,
-        },
-      });
-
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
-
-      setGeneratedImage(data.url);
-      await refreshCredits();
-      toast.success('Poster berhasil dibuat!');
-    } catch (error: any) {
-      console.error('Generate error:', error);
-      toast.error(error.message || 'Gagal membuat poster');
-    } finally {
-      setIsGenerating(false);
-    }
+    await startGeneration('poster', {
+      type: 'image',
+      prompt: finalPrompt,
+      userId: user.id,
+      aspectRatio: aspectRatio.value,
+      resolution: resolution.id,
+    });
+    // Context handles the rest (api call, success/error state)
   };
   const handleDownload = async () => {
     if (!generatedImage) return;

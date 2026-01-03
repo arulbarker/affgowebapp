@@ -12,6 +12,7 @@ import { ArrowLeft, FileOutput, Loader2, Sparkles, Download, Check, ChevronDown,
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { useGeneration } from '@/context/GenerationContext';
 
 // Resolution options with pricing
 const RESOLUTIONS = [
@@ -79,9 +80,6 @@ const Infographic = () => {
     const [manualPrompt, setManualPrompt] = useState('');
 
     // UI state
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [generatedImage, setGeneratedImage] = useState<string | null>(null);
-    const [generatedData, setGeneratedData] = useState<any>(null); // To store full generation object for sharing
     const [showPreview, setShowPreview] = useState(false);
     const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -121,6 +119,13 @@ const Infographic = () => {
         return prompt;
     };
 
+    // Context
+    const { startGeneration, isGenerating: isGlobalGenerating, getTaskByType } = useGeneration();
+    const activeTask = getTaskByType('infographic');
+    const isGenerating = isGlobalGenerating && activeTask?.status === 'pending';
+    const generatedImage = activeTask?.status === 'success' ? activeTask.resultUrl : null;
+    const generatedData = activeTask?.data;
+
     const handleGenerate = async () => {
         if (credits < resolution.cost) {
             toast.error('Saldo tidak cukup. Top up dulu yuk!');
@@ -149,34 +154,13 @@ const Infographic = () => {
             finalPrompt = composePrompt();
         }
 
-        setIsGenerating(true);
-        setGeneratedImage(null);
-        setGeneratedData(null);
-
-        try {
-            const { data, error } = await supabase.functions.invoke('generate-ai', {
-                body: {
-                    type: 'image',
-                    prompt: finalPrompt,
-                    userId: user.id,
-                    aspectRatio: aspectRatio.value,
-                    resolution: resolution.id,
-                },
-            });
-
-            if (error) throw error;
-            if (data.error) throw new Error(data.error);
-
-            setGeneratedImage(data.url);
-            setGeneratedData({ ...data, prompt: finalPrompt }); // Store data for publishing
-            await refreshCredits();
-            toast.success('Infografis berhasil dibuat!');
-        } catch (error: any) {
-            console.error('Generate error:', error);
-            toast.error(error.message || 'Gagal membuat infografis');
-        } finally {
-            setIsGenerating(false);
-        }
+        await startGeneration('infographic', {
+            type: 'image',
+            prompt: finalPrompt,
+            userId: user.id,
+            aspectRatio: aspectRatio.value,
+            resolution: resolution.id,
+        });
     };
 
     const handleDownload = async () => {
