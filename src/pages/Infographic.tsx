@@ -75,6 +75,15 @@ const Infographic = () => {
     const [aspectRatio, setAspectRatio] = useState(ASPECT_RATIOS[0]);
     const [resolution, setResolution] = useState(RESOLUTIONS[0]);
 
+    const [language, setLanguage] = useState({ id: 'id', label: '🇮🇩 Indonesia', prompt: 'in Indonesian language' });
+
+    const LANGUAGES = [
+        { id: 'id', label: '🇮🇩 Indonesia', prompt: 'in Indonesian language' },
+        { id: 'en', label: '🇬🇧 English', prompt: 'in English' },
+        { id: 'jv', label: 'Jawa', prompt: 'in Javanese language' },
+        { id: 'su', label: 'Sunda', prompt: 'in Sundanese language' },
+    ];
+
     // Manual Prompt Mode
     const [isManualPrompt, setIsManualPrompt] = useState(false);
     const [manualPrompt, setManualPrompt] = useState('');
@@ -153,6 +162,9 @@ const Infographic = () => {
             }
             finalPrompt = composePrompt();
         }
+
+        // Add language instruction
+        finalPrompt += `. Text content must be ${language.prompt}.`;
 
         await startGeneration('infographic', {
             type: 'image',
@@ -309,6 +321,21 @@ const Infographic = () => {
                                                 onChange={(e) => setTopic(e.target.value)}
                                                 disabled={isGenerating}
                                             />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Bahasa Teks</Label>
+                                            <Select
+                                                value={language.id}
+                                                onValueChange={(val) => setLanguage(LANGUAGES.find(l => l.id === val) || LANGUAGES[0])}
+                                                disabled={isGenerating}
+                                            >
+                                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                                <SelectContent>
+                                                    {LANGUAGES.map(lang => (
+                                                        <SelectItem key={lang.id} value={lang.id}>{lang.label}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                         <div className="space-y-2">
                                             <Label>Poin-poin Utama (Opsional)</Label>
