@@ -22,9 +22,9 @@ const VIDEO_DURATIONS = [
 
 // Pricing matrix: resolution -> duration -> price
 const PRICING_MATRIX: Record<string, Record<number, number>> = {
-  '480p': { 5: 4500, 10: 6500 },
-  '720p': { 5: 7500, 10: 11500 },
-  '1080p': { 5: 11000, 10: 16500 },
+  '480p': { 5: 4500, 10: 7500 },
+  '720p': { 5: 7500, 10: 14000 },
+  '1080p': { 5: 11000, 10: 20500 },
 };
 
 const ASPECT_RATIOS = [
