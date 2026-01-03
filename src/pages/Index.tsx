@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Image, Video, ArrowRight, Loader2 } from 'lucide-react';
+import { Image, Video, ArrowRight, Loader2, FileOutput } from 'lucide-react';
 import { useEffect } from 'react';
 import affGoLogo from '@/assets/aff-go-logo.jpg';
 
@@ -12,6 +12,14 @@ const features = [
     title: 'Buat Poster',
     description: 'Bikin poster anti typo dengan AI',
     icon: Image,
+    price: 'Mulai Rp 3.000/gambar',
+    color: 'bg-primary/10 text-primary',
+  },
+  {
+    path: '/infographic',
+    title: 'Buat Infografis',
+    description: 'Data dan informasi jadi visual profesional',
+    icon: FileOutput,
     price: 'Mulai Rp 3.000/gambar',
     color: 'bg-primary/10 text-primary',
   },

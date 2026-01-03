@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Wallet, User, Home, Image, Video, Compass } from 'lucide-react';
+import { Wallet, User, Home, Image, Video, Compass, FileOutput } from 'lucide-react';
 import affGoLogo from '@/assets/aff-go-logo.jpg';
 
 const formatRupiah = (amount: number) => {
@@ -16,6 +16,7 @@ const desktopNavItems = [
   { path: '/', label: 'Beranda', icon: Home },
   { path: '/explore', label: 'Explore', icon: Compass },
   { path: '/poster', label: 'Poster', icon: Image },
+  { path: '/infographic', label: 'Infografis', icon: FileOutput },
   { path: '/video', label: 'Video', icon: Video },
 ];
 

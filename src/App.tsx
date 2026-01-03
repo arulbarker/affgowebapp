@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import TopUp from "./pages/TopUp";
 import Poster from "./pages/Poster";
+import Infographic from './pages/Infographic';
 import VideoGenerator from "./pages/VideoGenerator";
 import Profile from "./pages/Profile";
 import Explore from "./pages/Explore";
@@ -29,6 +30,7 @@ const AppLayout = () => {
         <Route path="/auth" element={<Auth />} />
         <Route path="/topup" element={<TopUp />} />
         <Route path="/poster" element={<Poster />} />
+        <Route path="/infographic" element={<Infographic />} />
         <Route path="/video" element={<VideoGenerator />} />
         <Route path="/explore" element={<Explore />} />
         <Route path="/profile" element={<Profile />} />

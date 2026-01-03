@@ -1,9 +1,10 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Image, Video, User, Compass } from 'lucide-react';
+import { Home, Image, Video, User, Compass, FileOutput } from 'lucide-react';
 
 const navItems = [
   { path: '/', label: 'Beranda', icon: Home },
   { path: '/poster', label: 'Poster', icon: Image },
+  { path: '/infographic', label: 'Infografis', icon: FileOutput },
   { path: '/video', label: 'Video', icon: Video },
   { path: '/explore', label: 'Explore', icon: Compass },
   { path: '/profile', label: 'Profil', icon: User },
