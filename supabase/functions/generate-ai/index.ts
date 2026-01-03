@@ -71,8 +71,17 @@ serve(async (req) => {
       throw new Error('ATLASCLOUD_API_KEY is not configured');
     }
 
-    // Use service role for database operations
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Use service role for database operations - handle potential undefined key
+    if (!supabaseServiceKey) {
+      console.error('SUPABASE_SERVICE_ROLE_KEY is missing');
+      throw new Error('Service configuration error');
+    }
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
 
     // Check user credits
     const { data: profile, error: profileError } = await supabase
@@ -130,12 +139,12 @@ serve(async (req) => {
       // Map aspect ratio to appropriate size
       const aspectRatioSizes: Record<string, Record<string, string>> = {
         '1k': {
-          'square': '1024*1024',
-          'square_hd': '1024*1024',
-          'portrait_4_3': '896*1152',
-          'portrait_16_9': '768*1344',
-          'landscape_4_3': '1152*896',
-          'landscape_16_9': '1344*768',
+          'square': '2048*2048',      // Increased from 1024 to meet 3.6MP min
+          'square_hd': '2048*2048',
+          'portrait_4_3': '1792*2304', // approx 4.1MP
+          'portrait_16_9': '1536*2688', // approx 4.1MP
+          'landscape_4_3': '2304*1792',
+          'landscape_16_9': '2688*1536',
         },
         '2k': {
           'square': '2048*2048',

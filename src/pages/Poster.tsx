@@ -14,9 +14,8 @@ import { cn } from '@/lib/utils';
 
 // Resolution options with pricing
 const RESOLUTIONS = [
-  { id: '1k', label: '1K', description: '1024px', size: '1024*1024', cost: 1600 },
-  { id: '2k', label: '2K', description: '2048px', size: '2048*2048', cost: 3000 },
-  { id: '4k', label: '4K', description: '4096px', size: '4096*4096', cost: 4500 },
+  { id: '2k', label: '2K', description: '2048px (Ultra HD)', size: '2048*2048', cost: 3000 },
+  { id: '4k', label: '4K', description: '4096px (Print Ready)', size: '4096*4096', cost: 4500 },
 ];
 
 // Poster Types - Organized by Category

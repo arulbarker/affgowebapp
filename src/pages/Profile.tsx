@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User, Mail, Wallet, History, LogOut, Loader2, Compass, Share2 } from 'lucide-react';
+import { ArrowLeft, User, Mail, Wallet, History, LogOut, Loader2, Compass, Share2, Download, X, ZoomIn } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -31,6 +31,7 @@ const Profile = () => {
   const { user, credits, loading, signOut } = useAuth();
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [loadingGenerations, setLoadingGenerations] = useState(true);
+  const [selectedGen, setSelectedGen] = useState<Generation | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -88,6 +89,29 @@ const Profile = () => {
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
+  };
+
+  const handleDownload = async (url: string | null) => {
+    if (!url) return;
+    try {
+      toast.info('Menyiapkan download...');
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch image');
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `poster-${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(blobUrl);
+      document.body.removeChild(a);
+      toast.success('Download berhasil!');
+    } catch (error) {
+      console.error('Download error:', error);
+      window.open(url, '_blank');
+      toast.info('Dibuka di tab baru (Klik Kanan > Save Image As)');
+    }
   };
 
   if (loading) {
@@ -168,15 +192,21 @@ const Profile = () => {
                 {generations.map((gen) => (
                   <div
                     key={gen.id}
-                    className="flex items-center gap-3 rounded-lg border p-3"
+                    className="flex items-center gap-3 rounded-lg border p-3 hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() => gen.type === 'image' && setSelectedGen(gen)}
                   >
-                    <div className="h-12 w-12 overflow-hidden rounded-lg bg-muted">
+                    <div className="h-12 w-12 overflow-hidden rounded-lg bg-muted relative">
                       {gen.type === 'image' && gen.image_url && (
-                        <img
-                          src={gen.image_url}
-                          alt="Generated"
-                          className="h-full w-full object-cover"
-                        />
+                        <>
+                          <img
+                            src={gen.image_url}
+                            alt="Generated"
+                            className="h-full w-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                            <ZoomIn className="h-4 w-4 text-white" />
+                          </div>
+                        </>
                       )}
                       {gen.type === 'video' && (
                         <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
@@ -228,7 +258,58 @@ const Profile = () => {
           Keluar
         </Button>
       </div>
-    </div>
+
+      {/* Detail Modal */}
+      {
+        selectedGen && (
+          <div
+            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 animate-in fade-in duration-200"
+            onClick={() => setSelectedGen(null)}
+          >
+            <button
+              className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors"
+              onClick={() => setSelectedGen(null)}
+            >
+              <X className="h-8 w-8" />
+            </button>
+
+            <div
+              className="relative max-w-4xl w-full flex flex-col items-center gap-4"
+              onClick={e => e.stopPropagation()}
+            >
+              {selectedGen.type === 'image' && selectedGen.image_url && (
+                <img
+                  src={selectedGen.image_url}
+                  alt={selectedGen.prompt || 'Generated Image'}
+                  className="max-h-[80vh] w-auto rounded-lg shadow-2xl"
+                />
+              )}
+
+              <div className="flex gap-3 w-full justify-center">
+                <Button onClick={() => handleDownload(selectedGen.image_url)}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Download HD
+                </Button>
+                <Button
+                  variant={selectedGen.is_public ? "secondary" : "default"}
+                  onClick={() => handlePublish(selectedGen)}
+                >
+                  <Compass className="mr-2 h-4 w-4" />
+                  {selectedGen.is_public ? 'Unpublish' : 'Publish to Explore'}
+                </Button>
+              </div>
+
+              {selectedGen.prompt && (
+                <div className="bg-black/50 p-4 rounded-lg text-white text-center max-w-2xl backdrop-blur-sm">
+                  <p className="text-sm font-medium opacity-80 mb-1">Prompt:</p>
+                  <p className="text-sm">{selectedGen.prompt}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      }
+    </div >
   );
 };
 
