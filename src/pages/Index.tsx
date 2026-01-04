@@ -53,7 +53,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background p-4 pb-24 md:pb-8">
-      <div className="mx-auto max-w-md md:max-w-4xl">
+      <div className="mx-auto max-w-md md:max-w-6xl">
         {/* Hero */}
         <div className="mb-6 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 p-6">
           <div className="mb-3 flex items-center gap-3">
@@ -67,7 +67,7 @@ const Index = () => {
 
         {/* Features */}
         <h2 className="mb-4 text-lg font-semibold">Fitur Tersedia</h2>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           {features.map((feature) => {
             const Icon = feature.icon;
             return (

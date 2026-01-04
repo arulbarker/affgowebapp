@@ -145,7 +145,7 @@ const Explore = () => {
 
     return (
         <div className="min-h-screen bg-background p-4 pb-24 md:pb-8">
-            <div className="mx-auto max-w-5xl">
+            <div className="mx-auto max-w-7xl">
                 <div className="mb-8 flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -172,7 +172,7 @@ const Explore = () => {
                         Belum ada karya yang dibagikan
                     </div>
                 ) : (
-                    <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
+                    <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4">
                         {generations.map((gen) => (
                             <Card key={gen.id} className="break-inside-avoid overflow-hidden border-muted group mb-4">
                                 <div className="relative aspect-auto">
