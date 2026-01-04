@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Compass, Heart, Copy, Download, Loader2, Share2 } from 'lucide-react';
+import { Compass, Heart, Copy, Download, Loader2, Share2, X, Image, FileOutput, ZoomIn } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PublicGeneration {
@@ -22,6 +22,20 @@ const Explore = () => {
     const [loading, setLoading] = useState(true);
     const [sort, setSort] = useState('newest');
     const [likingId, setLikingId] = useState<string | null>(null);
+    const [selectedGen, setSelectedGen] = useState<PublicGeneration | null>(null);
+
+    // Helper function to detect content type from prompt
+    const getContentType = (prompt: string): 'poster' | 'infographic' => {
+        const lowerPrompt = prompt.toLowerCase();
+        if (lowerPrompt.includes('infographic') || lowerPrompt.includes('infografis') ||
+            lowerPrompt.includes('timeline') || lowerPrompt.includes('data visualization') ||
+            lowerPrompt.includes('chart') || lowerPrompt.includes('graph') ||
+            lowerPrompt.includes('process') || lowerPrompt.includes('resume') ||
+            lowerPrompt.includes('listicle') || lowerPrompt.includes('comparison')) {
+            return 'infographic';
+        }
+        return 'poster';
+    };
 
     useEffect(() => {
         fetchGenerations();
@@ -173,60 +187,175 @@ const Explore = () => {
                     </div>
                 ) : (
                     <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4">
-                        {generations.map((gen) => (
-                            <Card key={gen.id} className="break-inside-avoid overflow-hidden border-muted group mb-4">
-                                <div className="relative aspect-auto">
-                                    {gen.image_url && (
-                                        <img
-                                            src={gen.image_url}
-                                            alt={gen.prompt}
-                                            className="w-full h-auto object-cover"
-                                            loading="lazy"
-                                        />
-                                    )}
-                                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                        <Button
-                                            size="icon"
-                                            variant="secondary"
-                                            className="rounded-full h-10 w-10"
-                                            onClick={() => handleDownload(gen.image_url, gen.id)}
-                                        >
-                                            <Download className="h-4 w-4" />
-                                        </Button>
+                        {generations.map((gen) => {
+                            const contentType = getContentType(gen.prompt);
+                            return (
+                                <Card key={gen.id} className="break-inside-avoid overflow-hidden border-muted group mb-4 cursor-pointer" onClick={() => setSelectedGen(gen)}>
+                                    <div className="relative aspect-auto">
+                                        {gen.image_url && (
+                                            <img
+                                                src={gen.image_url}
+                                                alt={gen.prompt}
+                                                className="w-full h-auto object-cover"
+                                                loading="lazy"
+                                            />
+                                        )}
+                                        {/* Type Badge */}
+                                        <div className={`absolute top-2 left-2 px-2 py-1 rounded-full text-[10px] font-medium flex items-center gap-1 ${contentType === 'infographic'
+                                                ? 'bg-blue-500/90 text-white'
+                                                : 'bg-green-500/90 text-white'
+                                            }`}>
+                                            {contentType === 'infographic' ? (
+                                                <><FileOutput className="h-3 w-3" /> Infografis</>
+                                            ) : (
+                                                <><Image className="h-3 w-3" /> Poster</>
+                                            )}
+                                        </div>
+                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                            <Button
+                                                size="icon"
+                                                variant="secondary"
+                                                className="rounded-full h-10 w-10"
+                                                onClick={(e) => { e.stopPropagation(); setSelectedGen(gen); }}
+                                            >
+                                                <ZoomIn className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                size="icon"
+                                                variant="secondary"
+                                                className="rounded-full h-10 w-10"
+                                                onClick={(e) => { e.stopPropagation(); handleDownload(gen.image_url, gen.id); }}
+                                            >
+                                                <Download className="h-4 w-4" />
+                                            </Button>
+                                        </div>
                                     </div>
-                                </div>
-                                <CardContent className="p-3">
-                                    <p className="text-sm text-muted-foreground line-clamp-2 mb-3 font-mono text-xs">
-                                        {gen.prompt}
-                                    </p>
-                                    <div className="flex items-center justify-between">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className={`gap-1 px-2 ${gen.is_liked_by_user ? 'text-red-500 hover:text-red-600' : 'text-muted-foreground'}`}
-                                            onClick={() => handleLike(gen)}
-                                        >
-                                            <Heart className={`h-4 w-4 ${gen.is_liked_by_user ? 'fill-current' : ''}`} />
-                                            <span className="text-xs">{gen.likes_count}</span>
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="gap-1 px-2 text-muted-foreground"
-                                            onClick={() => copyPrompt(gen.prompt)}
-                                        >
-                                            <Copy className="h-3 w-3" />
-                                            <span className="text-xs">Copy</span>
-                                        </Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
+                                    <CardContent className="p-3">
+                                        <p className="text-sm text-muted-foreground line-clamp-2 mb-3 font-mono text-xs">
+                                            {gen.prompt}
+                                        </p>
+                                        <div className="flex items-center justify-between">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className={`gap-1 px-2 ${gen.is_liked_by_user ? 'text-red-500 hover:text-red-600' : 'text-muted-foreground'}`}
+                                                onClick={(e) => { e.stopPropagation(); handleLike(gen); }}
+                                            >
+                                                <Heart className={`h-4 w-4 ${gen.is_liked_by_user ? 'fill-current' : ''}`} />
+                                                <span className="text-xs">{gen.likes_count}</span>
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="gap-1 px-2 text-muted-foreground"
+                                                onClick={(e) => { e.stopPropagation(); copyPrompt(gen.prompt); }}
+                                            >
+                                                <Copy className="h-3 w-3" />
+                                                <span className="text-xs">Copy</span>
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            );
+                        })}
                     </div>
                 )}
             </div>
+
+            {/* Preview Modal */}
+            {selectedGen && (
+                <div
+                    className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 animate-in fade-in duration-200"
+                    onClick={() => setSelectedGen(null)}
+                >
+                    <button
+                        className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors"
+                        onClick={() => setSelectedGen(null)}
+                    >
+                        <X className="h-8 w-8" />
+                    </button>
+
+                    <div
+                        className="relative max-w-5xl w-full flex flex-col md:flex-row gap-6 items-start"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Image */}
+                        {selectedGen.image_url && (
+                            <div className="flex-1 flex items-center justify-center">
+                                <img
+                                    src={selectedGen.image_url}
+                                    alt={selectedGen.prompt}
+                                    className="max-h-[80vh] w-auto rounded-lg shadow-2xl"
+                                />
+                            </div>
+                        )}
+
+                        {/* Details Panel */}
+                        <div className="w-full md:w-80 bg-background/95 backdrop-blur-sm rounded-lg p-5 space-y-4">
+                            {/* Type Badge */}
+                            <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${getContentType(selectedGen.prompt) === 'infographic'
+                                    ? 'bg-blue-500/20 text-blue-400'
+                                    : 'bg-green-500/20 text-green-400'
+                                }`}>
+                                {getContentType(selectedGen.prompt) === 'infographic' ? (
+                                    <><FileOutput className="h-4 w-4" /> Infografis</>
+                                ) : (
+                                    <><Image className="h-4 w-4" /> Poster</>
+                                )}
+                            </div>
+
+                            {/* Stats */}
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                    <Heart className={`h-4 w-4 ${selectedGen.is_liked_by_user ? 'fill-red-500 text-red-500' : ''}`} />
+                                    {selectedGen.likes_count} likes
+                                </span>
+                                <span>
+                                    {new Date(selectedGen.created_at).toLocaleDateString('id-ID', {
+                                        day: 'numeric',
+                                        month: 'short',
+                                        year: 'numeric'
+                                    })}
+                                </span>
+                            </div>
+
+                            {/* Prompt */}
+                            <div>
+                                <p className="text-xs font-medium text-muted-foreground mb-2">Prompt:</p>
+                                <p className="text-sm text-foreground bg-muted/50 p-3 rounded-lg">
+                                    {selectedGen.prompt}
+                                </p>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex flex-col gap-2 pt-2">
+                                <Button onClick={() => handleDownload(selectedGen.image_url, selectedGen.id)}>
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Download HD
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    onClick={() => copyPrompt(selectedGen.prompt)}
+                                >
+                                    <Copy className="mr-2 h-4 w-4" />
+                                    Copy Prompt
+                                </Button>
+                                <Button
+                                    variant={selectedGen.is_liked_by_user ? "default" : "outline"}
+                                    onClick={() => handleLike(selectedGen)}
+                                    className={selectedGen.is_liked_by_user ? 'bg-red-500 hover:bg-red-600' : ''}
+                                >
+                                    <Heart className={`mr-2 h-4 w-4 ${selectedGen.is_liked_by_user ? 'fill-current' : ''}`} />
+                                    {selectedGen.is_liked_by_user ? 'Liked' : 'Like'}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
 
 export default Explore;
+
