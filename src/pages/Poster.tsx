@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Image, Loader2, Sparkles, Download, Check, ChevronDown, ChevronUp, Palette, X, ZoomIn } from 'lucide-react';
+import { ArrowLeft, Image, Loader2, Sparkles, Download, Check, ChevronDown, ChevronUp, Palette, X, ZoomIn, Compass } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -223,6 +223,7 @@ const Poster = () => {
   const activeTask = getTaskByType('poster');
   const isGenerating = isGlobalGenerating && activeTask?.status === 'pending';
   const generatedImage = activeTask?.status === 'success' ? activeTask.resultUrl : null;
+  const generatedData = activeTask?.data;
 
 
 
@@ -304,6 +305,29 @@ const Poster = () => {
       // Fallback: open in new tab
       window.open(generatedImage, '_blank');
       toast.info('Gambar dibuka di tab baru. Klik kanan dan pilih "Save image as..."');
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!generatedData || !generatedData.id) {
+      toast.error('Data poster tidak ditemukan');
+      return;
+    }
+
+    try {
+      toast.info('Mempublikasikan ke Explore...');
+
+      const { error } = await supabase
+        .from('generations')
+        .update({ is_public: true })
+        .eq('id', generatedData.id);
+
+      if (error) throw error;
+
+      toast.success('Berhasil dipublish ke Explore!');
+    } catch (error: any) {
+      console.error('Publish error:', error);
+      toast.error('Gagal mempublish: ' + error.message);
     }
   };
 
@@ -758,6 +782,10 @@ const Poster = () => {
                     Download HD
                   </Button>
                 </div>
+                <Button variant="secondary" className="w-full" onClick={handlePublish}>
+                  <Compass className="h-4 w-4 mr-2" />
+                  Publish to Explore
+                </Button>
               </CardContent>
             </Card>
           )}

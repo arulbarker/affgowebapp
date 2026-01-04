@@ -354,8 +354,8 @@ serve(async (req) => {
       .update({ credits: newCredits })
       .eq('id', userId);
 
-    // Save generation record
-    await supabase
+    // Save generation record and get the ID
+    const { data: generationRecord, error: insertError } = await supabase
       .from('generations')
       .insert({
         user_id: userId,
@@ -364,15 +364,22 @@ serve(async (req) => {
         video_url: type === 'video' ? resultUrl : null,
         prompt: prompt,
         cost: cost,
-      });
+      })
+      .select('id')
+      .single();
 
-    console.log('Generation successful:', { type, resultUrl, newCredits });
+    if (insertError) {
+      console.error('Error saving generation record:', insertError);
+    }
+
+    console.log('Generation successful:', { type, resultUrl, newCredits, id: generationRecord?.id });
 
     return new Response(
       JSON.stringify({
         success: true,
         url: resultUrl,
         newCredits: newCredits,
+        id: generationRecord?.id,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
