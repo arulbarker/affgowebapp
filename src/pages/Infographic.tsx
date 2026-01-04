@@ -16,8 +16,8 @@ import { useGeneration } from '@/context/GenerationContext';
 
 // Resolution options with pricing
 const RESOLUTIONS = [
-    { id: '2k', label: 'Standard', description: '2048px (HD)', size: '2048*2048', cost: 3000 },
-    { id: '4k', label: 'Premium', description: '4096px (Print)', size: '4096*4096', cost: 4500 },
+    { id: '2k', label: '2K', description: '2048px (Ultra HD)', size: '2048*2048', cost: 3000 },
+    { id: '4k', label: '4K', description: '4096px (Print Ready)', size: '4096*4096', cost: 4500 },
 ];
 
 const INFOGRAPHIC_TYPES = [
@@ -50,10 +50,11 @@ const LAYOUT_STYLES = [
 ];
 
 const ASPECT_RATIOS = [
-    { id: 'portrait_16_9', label: 'Long Vertical', description: '9:16 (Mobile/Story)', value: 'portrait_16_9' },
-    { id: 'portrait_4_3', label: 'Poster', description: '3:4 (Print)', value: 'portrait_4_3' },
-    { id: 'square_hd', label: 'Square', description: '1:1 (Post)', value: 'square_hd' },
-    { id: 'landscape_16_9', label: 'Presentation', description: '16:9 (Slide)', value: 'landscape_16_9' },
+    { id: 'portrait_4_3', label: '3:4', description: 'Poster', value: 'portrait_4_3' },
+    { id: 'square', label: '1:1', description: 'Square', value: 'square_hd' },
+    { id: 'portrait', label: '9:16', description: 'Story', value: 'portrait_16_9' },
+    { id: 'landscape', label: '16:9', description: 'Wide', value: 'landscape_16_9' },
+    { id: 'landscape_4_3', label: '4:3', description: 'Landscape', value: 'landscape_4_3' },
 ];
 
 const Infographic = () => {
