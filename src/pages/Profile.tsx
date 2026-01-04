@@ -69,10 +69,15 @@ const Profile = () => {
 
     try {
       const newStatus = !gen.is_public;
-      const { error } = await supabase
+      console.log('Publishing generation:', gen.id, 'new status:', newStatus);
+
+      const { error, data } = await supabase
         .from('generations')
         .update({ is_public: newStatus })
-        .eq('id', gen.id);
+        .eq('id', gen.id)
+        .select();
+
+      console.log('Publish result:', { error, data });
 
       if (error) throw error;
 
@@ -80,9 +85,15 @@ const Profile = () => {
         g.id === gen.id ? { ...g, is_public: newStatus } : g
       ));
 
+      // Also update selectedGen if it's the same generation
+      if (selectedGen?.id === gen.id) {
+        setSelectedGen({ ...selectedGen, is_public: newStatus });
+      }
+
       toast.success(newStatus ? 'Poster berhasil dipublish ke Explore' : 'Poster dihapus dari Explore');
-    } catch (error) {
-      toast.error('Gagal mengupdate status publish');
+    } catch (error: any) {
+      console.error('Publish error:', error);
+      toast.error('Gagal mengupdate status publish: ' + (error.message || 'Unknown error'));
     }
   };
 

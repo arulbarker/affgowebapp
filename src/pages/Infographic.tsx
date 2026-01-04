@@ -200,7 +200,10 @@ const Infographic = () => {
     };
 
     const handlePublish = async () => {
-        if (!generatedData || !generatedData.id) return;
+        if (!generatedData || !generatedData.id) {
+            toast.error('Data tidak ditemukan. Silakan generate ulang.');
+            return;
+        }
 
         try {
             toast.info('Mempublikasikan ke Explore...');

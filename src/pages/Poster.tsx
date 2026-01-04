@@ -310,7 +310,7 @@ const Poster = () => {
 
   const handlePublish = async () => {
     if (!generatedData || !generatedData.id) {
-      toast.error('Data poster tidak ditemukan');
+      toast.error('Data poster tidak ditemukan. Silakan generate ulang.');
       return;
     }
 
