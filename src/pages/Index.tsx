@@ -8,11 +8,11 @@ import affGoLogo from '@/assets/aff-go-logo.jpg';
 
 const features = [
   {
-    path: '/poster',
-    title: 'Buat Poster',
-    description: 'Bikin poster anti typo dengan AI',
-    icon: Image,
-    price: 'Mulai Rp 3.000/gambar',
+    path: '/video',
+    title: 'Hidupkan Foto',
+    description: 'Ubah foto jadi video yang bergerak',
+    icon: Video,
+    price: 'Mulai Rp 7.500/video',
     color: 'bg-primary/10 text-primary',
   },
   {
@@ -24,11 +24,11 @@ const features = [
     color: 'bg-primary/10 text-primary',
   },
   {
-    path: '/video',
-    title: 'Hidupkan Foto',
-    description: 'Ubah foto jadi video yang bergerak',
-    icon: Video,
-    price: 'Mulai Rp 7.500/video',
+    path: '/poster',
+    title: 'Buat Poster',
+    description: 'Bikin poster anti typo dengan AI',
+    icon: Image,
+    price: 'Mulai Rp 3.000/gambar',
     color: 'bg-primary/10 text-primary',
   },
 ];

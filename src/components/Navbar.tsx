@@ -15,9 +15,6 @@ const formatRupiah = (amount: number) => {
 const desktopNavItems = [
   { path: '/', label: 'Beranda', icon: Home },
   { path: '/explore', label: 'Explore', icon: Compass },
-  { path: '/poster', label: 'Poster', icon: Image },
-  { path: '/infographic', label: 'Infografis', icon: FileOutput },
-  { path: '/video', label: 'Video', icon: Video },
 ];
 
 const Navbar = () => {
