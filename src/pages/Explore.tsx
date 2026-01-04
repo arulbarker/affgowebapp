@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Compass, Heart, Copy, Download, Loader2, Share2, X, Image, FileOutput, ZoomIn } from 'lucide-react';
+import { Compass, Heart, Copy, Download, Loader2, Share2, X, Image, FileOutput, ZoomIn, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PublicGeneration {
@@ -24,6 +24,11 @@ const Explore = () => {
     const [likingId, setLikingId] = useState<string | null>(null);
     const [selectedGen, setSelectedGen] = useState<PublicGeneration | null>(null);
 
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const itemsPerPage = 12;
+
     // Helper function to detect content type from prompt
     const getContentType = (prompt: string): 'poster' | 'infographic' => {
         const lowerPrompt = prompt.toLowerCase();
@@ -39,11 +44,29 @@ const Explore = () => {
 
     useEffect(() => {
         fetchGenerations();
-    }, [sort, user]);
+    }, [sort, user, currentPage]);
+
+    // Reset to page 1 when sort changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [sort]);
 
     const fetchGenerations = async () => {
         setLoading(true);
         try {
+            // First get total count
+            const { count } = await supabase
+                .from('generations')
+                .select('*', { count: 'exact', head: true })
+                .eq('is_public', true)
+                .eq('type', 'image');
+
+            setTotalCount(count || 0);
+
+            // Calculate range for pagination
+            const from = (currentPage - 1) * itemsPerPage;
+            const to = from + itemsPerPage - 1;
+
             let query = supabase
                 .from('generations')
                 .select('*')
@@ -56,7 +79,7 @@ const Explore = () => {
                 query = query.order('created_at', { ascending: false });
             }
 
-            const { data, error } = await query.limit(50);
+            const { data, error } = await query.range(from, to);
 
             if (error) throw error;
 
@@ -86,6 +109,8 @@ const Explore = () => {
             setLoading(false);
         }
     };
+
+    const totalPages = Math.ceil(totalCount / itemsPerPage);
 
     const handleLike = async (gen: PublicGeneration) => {
         if (!user) {
@@ -202,8 +227,8 @@ const Explore = () => {
                                         )}
                                         {/* Type Badge */}
                                         <div className={`absolute top-2 left-2 px-2 py-1 rounded-full text-[10px] font-medium flex items-center gap-1 ${contentType === 'infographic'
-                                                ? 'bg-blue-500/90 text-white'
-                                                : 'bg-green-500/90 text-white'
+                                            ? 'bg-blue-500/90 text-white'
+                                            : 'bg-green-500/90 text-white'
                                             }`}>
                                             {contentType === 'infographic' ? (
                                                 <><FileOutput className="h-3 w-3" /> Infografis</>
@@ -260,6 +285,90 @@ const Explore = () => {
                         })}
                     </div>
                 )}
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                    <div className="flex items-center justify-center gap-2 mt-8 pb-4">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={currentPage === 1 || loading}
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                            Prev
+                        </Button>
+
+                        <div className="flex items-center gap-1">
+                            {/* Show first page */}
+                            {currentPage > 3 && (
+                                <>
+                                    <Button
+                                        variant={currentPage === 1 ? "default" : "outline"}
+                                        size="sm"
+                                        className="w-9 h-9 p-0"
+                                        onClick={() => setCurrentPage(1)}
+                                    >
+                                        1
+                                    </Button>
+                                    {currentPage > 4 && <span className="text-muted-foreground px-1">...</span>}
+                                </>
+                            )}
+
+                            {/* Show surrounding pages */}
+                            {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                .filter(page => {
+                                    const diff = Math.abs(page - currentPage);
+                                    return diff <= 2;
+                                })
+                                .map(page => (
+                                    <Button
+                                        key={page}
+                                        variant={currentPage === page ? "default" : "outline"}
+                                        size="sm"
+                                        className="w-9 h-9 p-0"
+                                        onClick={() => setCurrentPage(page)}
+                                        disabled={loading}
+                                    >
+                                        {page}
+                                    </Button>
+                                ))
+                            }
+
+                            {/* Show last page */}
+                            {currentPage < totalPages - 2 && (
+                                <>
+                                    {currentPage < totalPages - 3 && <span className="text-muted-foreground px-1">...</span>}
+                                    <Button
+                                        variant={currentPage === totalPages ? "default" : "outline"}
+                                        size="sm"
+                                        className="w-9 h-9 p-0"
+                                        onClick={() => setCurrentPage(totalPages)}
+                                    >
+                                        {totalPages}
+                                    </Button>
+                                </>
+                            )}
+                        </div>
+
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                            disabled={currentPage === totalPages || loading}
+                        >
+                            Next
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                )}
+
+                {/* Total count display */}
+                {totalCount > 0 && (
+                    <p className="text-center text-sm text-muted-foreground mt-2">
+                        Menampilkan {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, totalCount)} dari {totalCount} karya
+                    </p>
+                )}
             </div>
 
             {/* Preview Modal */}
@@ -294,8 +403,8 @@ const Explore = () => {
                         <div className="w-full md:w-80 bg-background/95 backdrop-blur-sm rounded-lg p-5 space-y-4">
                             {/* Type Badge */}
                             <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${getContentType(selectedGen.prompt) === 'infographic'
-                                    ? 'bg-blue-500/20 text-blue-400'
-                                    : 'bg-green-500/20 text-green-400'
+                                ? 'bg-blue-500/20 text-blue-400'
+                                : 'bg-green-500/20 text-green-400'
                                 }`}>
                                 {getContentType(selectedGen.prompt) === 'infographic' ? (
                                     <><FileOutput className="h-4 w-4" /> Infografis</>
