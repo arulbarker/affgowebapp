@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User, Mail, Wallet, History, LogOut, Loader2, Compass, Share2, Download, X, ZoomIn } from 'lucide-react';
+import { ArrowLeft, User, Mail, Wallet, History, LogOut, Loader2, Compass, Share2, Download, X, ZoomIn, Play, Video } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -102,17 +102,19 @@ const Profile = () => {
     navigate('/auth');
   };
 
-  const handleDownload = async (url: string | null) => {
+  const handleDownload = async (url: string | null, type: 'image' | 'video' = 'image') => {
     if (!url) return;
     try {
       toast.info('Menyiapkan download...');
       const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch image');
+      if (!response.ok) throw new Error('Failed to fetch file');
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = blobUrl;
-      a.download = `poster-${Date.now()}.png`;
+      const ext = type === 'video' ? 'mp4' : 'png';
+      const prefix = type === 'video' ? 'video' : 'poster';
+      a.download = `${prefix}-${Date.now()}.${ext}`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(blobUrl);
@@ -121,7 +123,7 @@ const Profile = () => {
     } catch (error) {
       console.error('Download error:', error);
       window.open(url, '_blank');
-      toast.info('Dibuka di tab baru (Klik Kanan > Save Image As)');
+      toast.info('Dibuka di tab baru');
     }
   };
 
@@ -204,7 +206,7 @@ const Profile = () => {
                   <div
                     key={gen.id}
                     className="flex items-center gap-3 rounded-lg border p-3 hover:bg-muted/50 transition-colors cursor-pointer"
-                    onClick={() => gen.type === 'image' && setSelectedGen(gen)}
+                    onClick={() => setSelectedGen(gen)}
                   >
                     <div className="h-12 w-12 overflow-hidden rounded-lg bg-muted relative">
                       {gen.type === 'image' && gen.image_url && (
@@ -220,8 +222,8 @@ const Profile = () => {
                         </>
                       )}
                       {gen.type === 'video' && (
-                        <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                          Video
+                        <div className="flex h-full items-center justify-center bg-gradient-to-br from-purple-500/20 to-blue-500/20">
+                          <Play className="h-5 w-5 text-primary" />
                         </div>
                       )}
                     </div>
@@ -288,6 +290,7 @@ const Profile = () => {
               className="relative max-w-4xl w-full flex flex-col items-center gap-4"
               onClick={e => e.stopPropagation()}
             >
+              {/* Image Display */}
               {selectedGen.type === 'image' && selectedGen.image_url && (
                 <img
                   src={selectedGen.image_url}
@@ -296,18 +299,48 @@ const Profile = () => {
                 />
               )}
 
-              <div className="flex gap-3 w-full justify-center">
-                <Button onClick={() => handleDownload(selectedGen.image_url)}>
-                  <Download className="mr-2 h-4 w-4" />
-                  Download HD
-                </Button>
+              {/* Video Display */}
+              {selectedGen.type === 'video' && selectedGen.video_url && (
+                <video
+                  src={selectedGen.video_url}
+                  controls
+                  autoPlay
+                  loop
+                  className="max-h-[80vh] w-auto rounded-lg shadow-2xl"
+                />
+              )}
+
+              {/* No content message */}
+              {selectedGen.type === 'video' && !selectedGen.video_url && (
+                <div className="bg-muted/50 p-8 rounded-lg text-center">
+                  <Video className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground">Video tidak tersedia</p>
+                </div>
+              )}
+
+              <div className="flex gap-3 w-full justify-center flex-wrap">
+                {/* Download Button - works for both image and video */}
                 <Button
-                  variant={selectedGen.is_public ? "secondary" : "default"}
-                  onClick={() => handlePublish(selectedGen)}
+                  onClick={() => handleDownload(
+                    selectedGen.type === 'video' ? selectedGen.video_url : selectedGen.image_url,
+                    selectedGen.type as 'image' | 'video'
+                  )}
+                  disabled={selectedGen.type === 'video' ? !selectedGen.video_url : !selectedGen.image_url}
                 >
-                  <Compass className="mr-2 h-4 w-4" />
-                  {selectedGen.is_public ? 'Unpublish' : 'Publish to Explore'}
+                  <Download className="mr-2 h-4 w-4" />
+                  Download {selectedGen.type === 'video' ? 'Video' : 'HD'}
                 </Button>
+
+                {/* Publish Button - only for images */}
+                {selectedGen.type === 'image' && (
+                  <Button
+                    variant={selectedGen.is_public ? "secondary" : "default"}
+                    onClick={() => handlePublish(selectedGen)}
+                  >
+                    <Compass className="mr-2 h-4 w-4" />
+                    {selectedGen.is_public ? 'Unpublish' : 'Publish to Explore'}
+                  </Button>
+                )}
               </div>
 
               {selectedGen.prompt && (
